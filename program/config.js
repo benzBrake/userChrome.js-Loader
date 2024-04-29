@@ -111,7 +111,9 @@ try {
     }
     catch (ex) { Cu.reportError(ex); }
 
-    Cu.import('chrome://userchromejs/content/BootstrapLoader.jsm');
+    "import" in Cu ?
+      Cu.import('chrome://userchromejs/content/BootstrapLoader.jsm') :
+      ChromeUtils.importESModule("chrome://userchromejs/content/BootstrapLoader.sys.mjs");
   }
 } catch (ex) { Cu.reportError(ex); }
 
