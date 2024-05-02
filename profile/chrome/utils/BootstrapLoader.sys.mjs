@@ -7,7 +7,6 @@
 const Services = globalThis.Services;
 
 const lazy = {};
-
 ChromeUtils.defineESModuleGetters(lazy, {
   Blocklist: 'resource://gre/modules/Blocklist.sys.mjs',
   ConsoleAPI: 'resource://gre/modules/Console.sys.mjs',
@@ -43,7 +42,7 @@ Services.obs.addObserver(doc => {
     let update_orig = win.customElements.get('addon-options').prototype.update;
     win.customElements.get('addon-options').prototype.update = function (card, addon) {
       update_orig.apply(this, arguments);
-      if (addon.__AddonInternal__.optionsType == 1/*AddonManager.OPTIONS_TYPE_DIALOG*/ && !!addon.optionsURL)
+      if (addon.__AddonInternal__?.optionsType == 1/*AddonManager.OPTIONS_TYPE_DIALOG*/ && !!addon.optionsURL)
         this.querySelector('panel-item[data-l10n-id="preferences-addon-button"]').hidden = false;
     }
   }
