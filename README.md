@@ -4,7 +4,7 @@
 
 基于 alice0775 环境打包，加入了来自 xiaoxiaoflood 环境的 Bootstrap Loader，支持 onlyonce 属性，使用这个 userChrome.js 可以安装适配过的传统扩展，部分 xiaoxiaoflood 的脚本也可以无需移植就能使用。
 
-实际上可以向下兼容，具体版本没有测试。
+之前是从 Firefox 100开始改的，实际上可以向下兼容，具体版本没有测试。
 
 ## 使用说明
 
