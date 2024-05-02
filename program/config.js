@@ -9,7 +9,11 @@
 lockPref("toolkit.telemetry.enabled", false);
 
 try {
+  if (!Services)
+    Services = Cu.import('resource://gre/modules/Services.jsm', {}).Services;
+} catch (ex) { }
 
+try {
   let {
     classes: Cc,
     interfaces: Ci,
@@ -110,16 +114,11 @@ try {
       );
     }
     catch (ex) { Cu.reportError(ex); }
-    parseInt(Services.appinfo.version) < 125 ?
-      Cu.import('chrome://userchromejs/content/BootstrapLoader.jsm') :
-      ChromeUtils.importESModule("chrome://userchromejs/content/BootstrapLoader.sys.mjs");
+    parseInt(Services.appinfo.version) >= 125 ?
+      ChromeUtils.importESModule("chrome://userchromejs/content/BootstrapLoader.sys.mjs") :
+      Cu.import('chrome://userchromejs/content/BootstrapLoader.jsm');
   }
 } catch (ex) { Cu.reportError(ex); }
-
-try {
-  if (!Services)
-    Services = Cu.import('resource://gre/modules/Services.jsm', {}).Services;
-} catch (ex) { }
 
 try {
   const { AppConstants } = parseInt(Services.appinfo.version) < 108 ? ChromeUtils.import('resource://gre/modules/AppConstants.jsm') : ChromeUtils.importESModule("resource://gre/modules/AppConstants.sys.mjs");
