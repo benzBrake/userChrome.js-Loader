@@ -110,15 +110,15 @@ try {
       );
     }
     catch (ex) { Cu.reportError(ex); }
-
-    "import" in Cu ?
+    parseInt(Services.appinfo.version) < 125 ?
       Cu.import('chrome://userchromejs/content/BootstrapLoader.jsm') :
       ChromeUtils.importESModule("chrome://userchromejs/content/BootstrapLoader.sys.mjs");
   }
 } catch (ex) { Cu.reportError(ex); }
 
 try {
-  Cu.import('resource://gre/modules/Services.jsm');
+  if (!Services)
+    Services = Cu.import('resource://gre/modules/Services.jsm', {}).Services;
 } catch (ex) { }
 
 try {
@@ -186,7 +186,7 @@ try {
     handleEvent: function (aEvent) {
       let document = aEvent.originalTarget;
       let window = document.defaultView;
-      let location = window.location;
+      let { location, Object, console } = window;
       if (location && location.protocol == 'chrome:') {
         const ios = Cc["@mozilla.org/network/io-service;1"].getService(Ci.nsIIOService);
         const fph = ios.getProtocolHandler("file").QueryInterface(Ci.nsIFileProtocolHandler);
