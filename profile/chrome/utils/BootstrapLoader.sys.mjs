@@ -22,7 +22,7 @@ Services.obs.addObserver(doc => {
     win.customElements.get('addon-card').prototype.handleEvent = function (e) {
       if (e.type === 'click' &&
         e.target.getAttribute('action') === 'preferences' &&
-        this.addon.optionsType == 1/*AddonManager.OPTIONS_TYPE_DIALOG*/) {
+        this.addon.__AddonInternal__.optionsType == 1/*AddonManager.OPTIONS_TYPE_DIALOG*/ && !!this.addon.optionsURL) {
         var windows = Services.wm.getEnumerator(null);
         while (windows.hasMoreElements()) {
           var win2 = windows.getNext();
@@ -43,7 +43,7 @@ Services.obs.addObserver(doc => {
     let update_orig = win.customElements.get('addon-options').prototype.update;
     win.customElements.get('addon-options').prototype.update = function (card, addon) {
       update_orig.apply(this, arguments);
-      if (addon.optionsType == 1/*AddonManager.OPTIONS_TYPE_DIALOG*/)
+      if (addon.__AddonInternal__.optionsType == 1/*AddonManager.OPTIONS_TYPE_DIALOG*/ && !!addon.optionsURL)
         this.querySelector('panel-item[data-l10n-id="preferences-addon-button"]').hidden = false;
     }
   }
@@ -51,28 +51,6 @@ Services.obs.addObserver(doc => {
 
 const { AddonManager } = ChromeUtils.importESModule('resource://gre/modules/AddonManager.sys.mjs');
 const { XPIDatabase, AddonInternal } = ChromeUtils.importESModule('resource://gre/modules/addons/XPIDatabase.sys.mjs');
-
-// const { defineAddonWrapperProperty } = Cu.import('resource://gre/modules/addons/XPIDatabase.jsm');
-// defineAddonWrapperProperty('optionsType', function optionsType() {
-//   if (!this.isActive) {
-//     return null;
-//   }
-
-//   let addon = this.__AddonInternal__;
-//   let hasOptionsURL = !!this.optionsURL;
-
-//   if (addon.optionsType) {
-//     switch (parseInt(addon.optionsType, 10)) {
-//       case 1/*AddonManager.OPTIONS_TYPE_DIALOG*/:
-//       case AddonManager.OPTIONS_TYPE_TAB:
-//       case AddonManager.OPTIONS_TYPE_INLINE_BROWSER:
-//         return hasOptionsURL ? addon.optionsType : null;
-//     }
-//     return null;
-//   }
-
-//   return null;
-// });
 
 XPIDatabase.isDisabledLegacy = () => false;
 
@@ -331,6 +309,16 @@ var BootstrapLoader = {
     if (await pkg.hasResource('icon64.png')) {
       addon.icons[64] = 'icon64.png';
     }
+
+    Object.defineProperty(addon, 'appDisabled', {
+      set: _ => { },
+      get: _ => false
+    });
+
+    Object.defineProperty(addon, 'signedState', {
+      set: _ => { },
+      get: _ => AddonManager.SIGNEDSTATE_NOT_REQUIRED
+    });
 
     return addon;
   },
