@@ -38,6 +38,8 @@ try {
 
 try {
   const { AppConstants } = parseInt(Services.appinfo.version) < 108 ? ChromeUtils.import('resource://gre/modules/AppConstants.jsm') : ChromeUtils.importESModule("resource://gre/modules/AppConstants.sys.mjs");
+  const { Management } = parseInt(Services.appinfo.version) < 115 ? ChromeUtils.import('resource://gre/modules/Extension.jsm') :
+    ChromeUtils.importESModule("resource://gre/modules/Extension.sys.mjs");
 
   let UC = {
     webExts: new Map(),
@@ -98,6 +100,22 @@ try {
       aSubject.addEventListener('load', this, true);
     },
 
+    messageListener: function (msg) {
+      const browser = msg.target;
+      const { addonId } = browser._contentPrincipal;
+
+      browser.messageManager.removeMessageListener('Extension:ExtensionViewLoaded', this.messageListener);
+
+      if (browser.ownerGlobal.location.href == 'chrome://extensions/content/dummy.xhtml') {
+        UC.webExts.set(addonId, browser);
+        Services.obs.notifyObservers(null, 'UCJS:WebExtLoaded', addonId);
+      } else {
+        let win = browser.ownerGlobal.windowRoot.ownerGlobal;
+        UC.sidebar.get(addonId)?.set(win, browser) || UC.sidebar.set(addonId, new Map([[win, browser]]));
+        Services.obs.notifyObservers(win, 'UCJS:SidebarLoaded', addonId);
+      }
+    },
+
     handleEvent: function (aEvent) {
       let document = aEvent.originalTarget;
       let window = document.defaultView;
@@ -106,6 +124,15 @@ try {
         const ios = Cc["@mozilla.org/network/io-service;1"].getService(Ci.nsIIOService);
         const fph = ios.getProtocolHandler("file").QueryInterface(Ci.nsIFileProtocolHandler);
         const ds = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties);
+
+        if (!this.sharedWindowOpened && location.href == 'chrome://extensions/content/dummy.xhtml') {
+          this.sharedWindowOpened = true;
+
+          Management.on('extension-browser-inserted', function (topic, browser) {
+            browser.messageManager.addMessageListener('Extension:ExtensionViewLoaded', this.messageListener.bind(this));
+          }.bind(this));
+          return;
+        }
 
         const { xPref } = parseInt(Services.appinfo.version) >= 115 ? ChromeUtils.importESModule("chrome://userchromejs/content/xPref.sys.mjs") : Cu.import("chrome://userchromejs/content/xPref.jsm");
         window.xPref = xPref;
