@@ -613,23 +613,6 @@
             }
         },
 
-        get L10nRegistry() {
-            delete this.L10nRegistry;
-            var locales = Services.locale.appLocalesAsBCP47;
-            if (!locales.includes("en-US"))
-                locales.push("en-US");
-            var reg = new L10nRegistry();
-            reg.registerSources([
-                new L10nFileSource(
-                    "userchrome",
-                    "app",
-                    locales,
-                    "chrome://userchrome/content/locales/{locale}/"
-                ),
-            ]);
-            return this.L10nRegistry = reg;
-        },
-
         debug: function (aMsg) {
             Components.classes["@mozilla.org/consoleservice;1"]
                 .getService(Components.interfaces.nsIConsoleService)
@@ -646,6 +629,33 @@
             CONSOLE_SERVICE.logMessage(error);
         }
     };
+
+    const f = Services.dirsvc.get('UChrm', Ci.nsIFile);
+    f.append('locales');
+    if (f.exists()) {
+        f.append('en-US');
+        if (f.exists()) {
+            var locales = Services.locale.appLocalesAsBCP47;
+            if (!locales.includes("en-US"))
+                locales.push("en-US");
+            var reg = new L10nRegistry();
+            reg.registerSources([
+                new L10nFileSource(
+                    "userchrome",
+                    "app",
+                    locales,
+                    "chrome://userchrome/content/locales/{locale}/"
+                ),
+            ]);
+
+            Object.defineProperty(userChrome_js, "L10nRegistry", {
+                value: reg,
+                writable: false,
+                enumerable: true,
+                configurable: false
+            });
+        }
+    }
 
     //少しでも速くするためスクリプトデータの再利用
     var prefObj = Components.classes["@mozilla.org/preferences-service;1"]

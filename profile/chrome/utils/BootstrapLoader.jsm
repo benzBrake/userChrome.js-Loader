@@ -15,74 +15,76 @@ XPCOMUtils.defineLazyModuleGetters(this, {
   InstallRDF: 'chrome://userchromejs/content/RDFManifestConverter.jsm',
 });
 
-Services.obs.addObserver(doc => {
-  if (doc.location.protocol + doc.location.pathname === 'about:addons' ||
+const { AddonManager } = ChromeUtils.import('resource://gre/modules/AddonManager.jsm');
+const { XPIDatabase, AddonInternal } = ChromeUtils.import('resource://gre/modules/addons/XPIDatabase.jsm');
+
+try {
+  Services.obs.addObserver(doc => {
+    if (doc.location.protocol + doc.location.pathname === 'about:addons' ||
       doc.location.protocol + doc.location.pathname === 'chrome:/content/extensions/aboutaddons.html') {
-    const win = doc.defaultView;
-    let handleEvent_orig = win.customElements.get('addon-card').prototype.handleEvent;
-    win.customElements.get('addon-card').prototype.handleEvent = function (e) {
-      if (e.type === 'click' &&
+      const win = doc.defaultView;
+      let handleEvent_orig = win.customElements.get('addon-card').prototype.handleEvent;
+      win.customElements.get('addon-card').prototype.handleEvent = function (e) {
+        if (e.type === 'click' &&
           e.target.getAttribute('action') === 'preferences' &&
           this.addon.optionsType == 1/*AddonManager.OPTIONS_TYPE_DIALOG*/) {
-        var windows = Services.wm.getEnumerator(null);
-        while (windows.hasMoreElements()) {
-          var win2 = windows.getNext();
-          if (win2.closed) {
-            continue;
+          var windows = Services.wm.getEnumerator(null);
+          while (windows.hasMoreElements()) {
+            var win2 = windows.getNext();
+            if (win2.closed) {
+              continue;
+            }
+            if (win2.document.documentURI == this.addon.optionsURL) {
+              win2.focus();
+              return;
+            }
           }
-          if (win2.document.documentURI == this.addon.optionsURL) {
-            win2.focus();
-            return;
-          }
+          var features = 'chrome,titlebar,toolbar,centerscreen';
+          win.docShell.rootTreeItem.domWindow.openDialog(this.addon.optionsURL, this.addon.id, features);
+        } else {
+          handleEvent_orig.apply(this, arguments);
         }
-        var features = 'chrome,titlebar,toolbar,centerscreen';
-        win.docShell.rootTreeItem.domWindow.openDialog(this.addon.optionsURL, this.addon.id, features);
-      } else {
-        handleEvent_orig.apply(this, arguments);
+      }
+      let update_orig = win.customElements.get('addon-options').prototype.update;
+      win.customElements.get('addon-options').prototype.update = function (card, addon) {
+        update_orig.apply(this, arguments);
+        if (addon.optionsType == 1/*AddonManager.OPTIONS_TYPE_DIALOG*/)
+          this.querySelector('panel-item[data-l10n-id="preferences-addon-button"]').hidden = false;
       }
     }
-    let update_orig = win.customElements.get('addon-options').prototype.update;
-    win.customElements.get('addon-options').prototype.update = function (card, addon) {
-      update_orig.apply(this, arguments);
-      if (addon.optionsType == 1/*AddonManager.OPTIONS_TYPE_DIALOG*/)
-        this.querySelector('panel-item[data-l10n-id="preferences-addon-button"]').hidden = false;
+  }, 'chrome-document-loaded');
+
+  const { defineAddonWrapperProperty } = Cu.import('resource://gre/modules/addons/XPIDatabase.jsm');
+  defineAddonWrapperProperty('optionsType', function optionsType() {
+    if (!this.isActive) {
+      return null;
     }
-  }
-}, 'chrome-document-loaded');
 
-const {AddonManager} = ChromeUtils.import('resource://gre/modules/AddonManager.jsm');
-const {XPIDatabase, AddonInternal} = ChromeUtils.import('resource://gre/modules/addons/XPIDatabase.jsm');
+    let addon = this.__AddonInternal__;
+    let hasOptionsURL = !!this.optionsURL;
 
-const { defineAddonWrapperProperty } = Cu.import('resource://gre/modules/addons/XPIDatabase.jsm');
-defineAddonWrapperProperty('optionsType', function optionsType() {
-  if (!this.isActive) {
-    return null;
-  }
-
-  let addon = this.__AddonInternal__;
-  let hasOptionsURL = !!this.optionsURL;
-
-  if (addon.optionsType) {
-    switch (parseInt(addon.optionsType, 10)) {
-      case 1/*AddonManager.OPTIONS_TYPE_DIALOG*/:
-      case AddonManager.OPTIONS_TYPE_TAB:
-      case AddonManager.OPTIONS_TYPE_INLINE_BROWSER:
-        return hasOptionsURL ? addon.optionsType : null;
+    if (addon.optionsType) {
+      switch (parseInt(addon.optionsType, 10)) {
+        case 1/*AddonManager.OPTIONS_TYPE_DIALOG*/:
+        case AddonManager.OPTIONS_TYPE_TAB:
+        case AddonManager.OPTIONS_TYPE_INLINE_BROWSER:
+          return hasOptionsURL ? addon.optionsType : null;
+      }
+      return null;
     }
-    return null;
-  }
 
-  return null;
-});
+    return null;
+  });
+} catch (ex) { }
 
 XPIDatabase.isDisabledLegacy = () => false;
 
 XPCOMUtils.defineLazyGetter(this, 'BOOTSTRAP_REASONS', () => {
-  const {XPIProvider} = ChromeUtils.import('resource://gre/modules/addons/XPIProvider.jsm');
+  const { XPIProvider } = ChromeUtils.import('resource://gre/modules/addons/XPIProvider.jsm');
   return XPIProvider.BOOTSTRAP_REASONS;
 });
 
-const {Log} = ChromeUtils.import('resource://gre/modules/Log.jsm');
+const { Log } = ChromeUtils.import('resource://gre/modules/Log.jsm');
 var logger = Log.repository.getLogger('addons.bootstrap');
 
 /**
@@ -91,10 +93,10 @@ var logger = Log.repository.getLogger('addons.bootstrap');
 var gIDTest = /^(\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}|[a-z0-9-\._]*\@[a-z0-9-\._]+)$/i;
 
 // Properties that exist in the install manifest
-const PROP_METADATA      = ['id', 'version', 'type', 'internalName', 'updateURL',
-                            'optionsURL', 'optionsType', 'aboutURL', 'iconURL'];
+const PROP_METADATA = ['id', 'version', 'type', 'internalName', 'updateURL',
+  'optionsURL', 'optionsType', 'aboutURL', 'iconURL'];
 const PROP_LOCALE_SINGLE = ['name', 'description', 'creator', 'homepageURL'];
-const PROP_LOCALE_MULTI  = ['developers', 'translators', 'contributors'];
+const PROP_LOCALE_MULTI = ['developers', 'translators', 'contributors'];
 
 // Map new string type identifiers to old style nsIUpdateItem types.
 // Retired values:
@@ -248,7 +250,7 @@ var BootstrapLoader = {
       throw new Error('No version in install manifest');
 
     addon.strictCompatibility = (!(addon.type in COMPATIBLE_BY_DEFAULT_TYPES) ||
-                                 manifest.strictCompatibility == 'true');
+      manifest.strictCompatibility == 'true');
 
     // Only read these properties for extensions.
     if (addon.type == 'extension') {
@@ -257,10 +259,10 @@ var BootstrapLoader = {
       }
 
       if (addon.optionsType &&
-          addon.optionsType != 1/*AddonManager.OPTIONS_TYPE_DIALOG*/ &&
-          addon.optionsType != AddonManager.OPTIONS_TYPE_INLINE_BROWSER &&
-          addon.optionsType != AddonManager.OPTIONS_TYPE_TAB) {
-            throw new Error('Install manifest specifies unknown optionsType: ' + addon.optionsType);
+        addon.optionsType != 1/*AddonManager.OPTIONS_TYPE_DIALOG*/ &&
+        addon.optionsType != AddonManager.OPTIONS_TYPE_INLINE_BROWSER &&
+        addon.optionsType != AddonManager.OPTIONS_TYPE_TAB) {
+        throw new Error('Install manifest specifies unknown optionsType: ' + addon.optionsType);
       }
 
       if (addon.optionsType)
@@ -284,13 +286,13 @@ var BootstrapLoader = {
     addon.targetApplications = [];
     for (let targetApp of manifest.targetApplications || []) {
       if (!targetApp.id || !targetApp.minVersion ||
-          !targetApp.maxVersion) {
-            logger.warn('Ignoring invalid targetApplication entry in install manifest');
-            continue;
+        !targetApp.maxVersion) {
+        logger.warn('Ignoring invalid targetApplication entry in install manifest');
+        continue;
       }
       if (seenApplications.includes(targetApp.id)) {
         logger.warn('Ignoring duplicate targetApplication entry for ' + targetApp.id +
-                    ' in install manifest');
+          ' in install manifest');
         continue;
       }
       seenApplications.push(targetApp.id);
