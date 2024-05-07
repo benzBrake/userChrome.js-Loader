@@ -35,7 +35,7 @@ try {
       Cu.import('chrome://userchromejs/content/BootstrapLoader.jsm');
   }
 
-  useESM >= 125 ?
+  useESM ?
     ChromeUtils.importESModule("chrome://userchromejs/content/boot.sys.mjs") :
     Cu.import('chrome://userchromejs/content/boot.jsm');
 } catch (ex) { Cu.reportError(ex); }
