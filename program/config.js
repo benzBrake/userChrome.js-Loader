@@ -8,21 +8,27 @@
 */
 lockPref("toolkit.telemetry.enabled", false);
 
+let {
+  classes: Cc,
+  interfaces: Ci,
+  manager: Cm,
+  utils: Cu
+} = Components;
+
+if (typeof globalThis === "object" && typeof globalThis.Services == "undefined") {
+  const Services = Cu.import("resource://gre/modules/Services.jsm").Services;
+  globalThis.Services = Services;
+}
+
+let useESM = true;
 try {
-  let {
-    classes: Cc,
-    interfaces: Ci,
-    manager: Cm,
-    utils: Cu
-  } = Components;
+  // old version of firefox don't have this pref
+  Services.prefs.getBoolPref("accessibility.ARIAElementReflection.enabled");
+} catch(ex) {
+  useESM = false;
+}
 
-  if (typeof globalThis === "object" && typeof globalThis.Services == "undefined") {
-    const Services = Cu.import("resource://gre/modules/Services.jsm").Services;
-    globalThis.Services = Services;
-  }
-
-  const useESM = parseInt(Services.appinfo.version) >= 125
-
+try {
   let cmanifest = Cc['@mozilla.org/file/directory_service;1'].getService(Ci.nsIProperties).get('UChrm', Ci.nsIFile);
   cmanifest.append('utils');
   cmanifest.append('chrome.manifest');
