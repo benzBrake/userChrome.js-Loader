@@ -24,6 +24,10 @@ const _uc = {
         return true;
     },
 
+    get isESM() {
+        return true;
+    },
+
     windows: function (fun, onlyBrowsers = true) {
         let windows = Services.wm.getEnumerator(onlyBrowsers ? this.BROWSERTYPE : null);
         while (windows.hasMoreElements()) {
