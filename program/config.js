@@ -20,13 +20,8 @@ if (typeof globalThis === "object" && typeof globalThis.Services == "undefined")
   globalThis.Services = Services;
 }
 
-let useESM = true;
-try {
-  // old version of firefox don't have this pref
-  Services.prefs.getBoolPref("accessibility.ARIAElementReflection.enabled");
-} catch(ex) {
-  useESM = false;
-}
+// old version of firefox don't have this pref
+const useESM = Services.prefs.getPrefType("accessibility.ARIAElementReflection.enabled") !== Services.prefs.PREF_INVALID;
 
 try {
   let cmanifest = Cc['@mozilla.org/file/directory_service;1'].getService(Ci.nsIProperties).get('UChrm', Ci.nsIFile);
