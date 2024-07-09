@@ -259,7 +259,7 @@
 
             //メタデータ収集
             function getScriptData (aContent, aFile) {
-                var charset, description;
+                var charset, description, fullDescription;
                 var header = (aContent.match(/^\/\/ ==UserScript==[ \t]*\n(?:.*\n)*?\/\/ ==\/UserScript==[ \t]*\n/m) || [""])[0];
                 var match, rex = { include: [], exclude: [] };
                 while ((match = findNextRe.exec(header))) {
@@ -279,10 +279,18 @@
                     ? header.match(/\/\/ @description\s+.*?\/\*\s*(.+?)\s*\*\//is)?.[1]
                     : header.match(/\/\/ @description\s+(.+)\s*$/im)?.[1];
 
-                if (description == "" || !description)
+                if (description == "" || !description) {
                     description = aFile.leafName;
-
+                } else {
+                    fullDescription = description;
+                    description = getFirstLine(description);
+                }
                 var url = fph.getURLSpecFromActualFile(aFile);
+
+                function getFirstLine (text) {
+                    const lines = text.split(/\r\n|\r|\n/);
+                    return lines[0] || text;
+                }
 
                 return {
                     filename: aFile.leafName,
@@ -300,6 +308,7 @@
                     optionsURL: header.match(/\/\/ @optionsURL\s+(.+)\s*$/im)?.[1],
                     startup: header.match(/\/\/ @startup\s+(.+)\s*$/im)?.[1],
                     license: header.match(/\/\/ @license\s+(.+)\s*$/im)?.[1],
+                    fullDescription
                 }
             }
 
