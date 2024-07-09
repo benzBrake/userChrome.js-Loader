@@ -137,7 +137,7 @@
         EXCLUDE_CHROMEHIDDEN: EXCLUDE_CHROMEHIDDEN,
         REPLACECACHE: REPLACECACHE,
 
-        get hackVersion() {
+        get hackVersion () {
             delete this.hackVersion;
             return this.hackVersion = "0.8";
             //拡張のバージョン違いを吸収
@@ -238,18 +238,18 @@
             this.debug('Parsing getScripts: ' + ((new Date()).getTime() - Start) + 'msec');
 
             //nameを比較する関数
-            function cmp_name(a, b) {
+            function cmp_name (a, b) {
                 if (a.toLowerCase() == b.toLowerCase())
                     return a < b ? -1 : 1;
                 else
                     return a.toLowerCase() < b.toLowerCase() ? -1 : 1;
             }
-            function cmp_fname(a, b) {
+            function cmp_fname (a, b) {
                 return cmp_name(a.filename, b.filename);
             }
 
             //UCJSローダ必要か
-            function checkUCJS(aPath) {
+            function checkUCJS (aPath) {
                 for (var i = 0, len = that.UCJS.length; i < len; i++) {
                     if (aPath.indexOf(that.UCJS[i], 0) > -1)
                         return true;
@@ -258,7 +258,7 @@
             }
 
             //メタデータ収集
-            function getScriptData(aContent, aFile) {
+            function getScriptData (aContent, aFile) {
                 var charset, description;
                 var header = (aContent.match(/^\/\/ ==UserScript==[ \t]*\n(?:.*\n)*?\/\/ ==\/UserScript==[ \t]*\n/m) || [""])[0];
                 var match, rex = { include: [], exclude: [] };
@@ -304,7 +304,7 @@
             }
 
             //スクリプトファイル読み込み
-            function readFile(aFile, metaOnly) {
+            function readFile (aFile, metaOnly) {
                 if (typeof metaOnly == 'undefined')
                     metaOnly = false;
                 var stream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(Ci.nsIFileInputStream);
@@ -324,7 +324,7 @@
             }
 
             //スクリプトファイル文字コード変換読み込み
-            function deleteBOMreadFile(aFile) {
+            function deleteBOMreadFile (aFile) {
                 var UI = Components.classes["@mozilla.org/intl/scriptableunicodeconverter"].
                     createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
                 UI.charset = "UTF-8";
@@ -354,7 +354,7 @@
             }
 
             //バイナリ読み込み
-            function readBinary(aFile) {
+            function readBinary (aFile) {
                 var istream = Components.classes["@mozilla.org/network/file-input-stream;1"]
                     .createInstance(Components.interfaces.nsIFileInputStream);
                 istream.init(aFile, -1, -1, false);
@@ -366,7 +366,7 @@
             }
 
             //バイナリ書き込み
-            function writeFile(aFile, aData) {
+            function writeFile (aFile, aData) {
                 var foStream = Components.classes["@mozilla.org/network/file-output-stream;1"]
                     .createInstance(Components.interfaces.nsIFileOutputStream);
                 // ファイル追記の際は、0x02 | 0x10 を使う
@@ -377,8 +377,8 @@
             }
 
             //文字コードを得る
-            function getCharset(str) {
-                function charCode(str) {
+            function getCharset (str) {
+                function charCode (str) {
                     if (/\x1B\x24(?:[\x40\x42]|\x28\x44)/.test(str))
                         return 'ISO-2022-JP';
                     if (/[\x80-\xFE]/.test(str)) {
@@ -415,7 +415,7 @@
             }
 
             //prefを読み込み
-            function getPref(aPrefString, aPrefType, aDefault) {
+            function getPref (aPrefString, aPrefType, aDefault) {
                 var xpPref = Components.classes['@mozilla.org/preferences-service;1']
                     .getService(Components.interfaces.nsIPrefService);
                 try {
@@ -436,7 +436,7 @@
             }
 
             //pref文字列変換
-            function restoreState(a) {
+            function restoreState (a) {
                 try {
                     var sd = [];
                     for (var i = 0, max = a.length; i < max; ++i) sd[unescape(a[i])] = true;
@@ -544,7 +544,7 @@
             var script, aScript, url;
             const Cc = Components.classes;
             const Ci = Components.interfaces;
-            const maxJSVersion = (function getMaxJSVersion() {
+            const maxJSVersion = (function getMaxJSVersion () {
                 var appInfo = Components
                     .classes["@mozilla.org/xre/app-info;1"]
                     .getService(Components.interfaces.nsIXULAppInfo);
@@ -596,11 +596,11 @@
                         if (script.charset)
                             Services.scriptloader.loadSubScript(
                                 script.url + "?" + this.getLastModifiedTime(script.file),
-                                script.onlyonce ? { window: document.defaultView } : document.defaultView, script.charset);
+                                script.onlyonce ? { window: doc.defaultView } : doc.defaultView, script.charset);
                         else
                             Services.scriptloader.loadSubScript(
                                 script.url + "?" + this.getLastModifiedTime(script.file),
-                                script.onlyonce ? { window: document.defaultView } : document.defaultView);
+                                script.onlyonce ? { window: doc.defaultView } : doc.defaultView);
 
                         script.isRunning = true;
                         if (script.startup) {
