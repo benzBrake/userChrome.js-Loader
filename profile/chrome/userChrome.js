@@ -85,7 +85,7 @@
     const REPLACECACHE = true; //スクリプトの更新日付によりキャッシュを更新する: true , しない:[false]
     //=====================USE_0_63_FOLDER = falseの時===================
     var UCJS = new Array("UCJSFiles", "userContent", "userMenu"); //UCJS Loader 仕様を適用 (NoScriptでfile:///を許可しておく)
-    var arrSubdir = new Array("", "xul", "TabMixPlus", "withTabMixPlus", "SubScript", "UCJSFiles", "userCrome.js.0.8", "userContent", "userMenu", "UserChromeJS");    //スクリプトはこの順番で実行される
+    var arrSubdir = new Array("", "xul", "TabMixPlus", "withTabMixPlus", "SubScript", "UCJSFiles", "userCrome.js.0.8", "userContent", "userMenu", "userChromeJS");    //スクリプトはこの順番で実行される
     //===================================================================
     const ALWAYSEXECUTE = ['rebuild_userChrome.uc.xul', 'rebuild_userChrome.uc.js']; //常に実行するスクリプト
     var INFO = true;
