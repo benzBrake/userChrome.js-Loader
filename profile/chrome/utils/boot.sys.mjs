@@ -5,7 +5,6 @@ const { Services } = globalThis;
 const { xPref } = ChromeUtils.importESModule("chrome://userchromejs/content/xPref.sys.mjs");
 const { AppConstants } = ChromeUtils.importESModule('resource://gre/modules/AppConstants.sys.mjs');
 const { Management } = ChromeUtils.importESModule('resource://gre/modules/Extension.sys.mjs');
-const FS = ChromeUtils.importESModule("chrome://userchromejs/content/fs.sys.mjs").FileSystem;
 
 const UC = {
     webExts: new Map(),
@@ -61,86 +60,6 @@ const _uc = {
     }
 }
 
-const loaderModuleLink = new (function () {
-    let sessionRestored = false;
-    let variant = null;
-    let brandName = null;
-    // .setup() is called once by boot.sys.mjs on startup
-    this.setup = (ref, aVersion, aBrandName, aVariant, aScriptData) => {
-        this.scripts = ref.scripts;
-        this.styles = ref.styles;
-        this.version = aVersion;
-        this.getScriptMenu = (aDoc) => {
-            return ref.generateScriptMenuItemsIfNeeded(aDoc);
-        }
-        brandName = aBrandName;
-        variant = aVariant;
-        this.scriptDataConstructor = aScriptData;
-        delete this.setup;
-        Object.freeze(this);
-        return
-    }
-    Object.defineProperty(this, "variant", {
-        get: () => {
-            if (variant === null) {
-                let is_tb = AppConstants.BROWSER_CHROME_URL.startsWith("chrome://messenger");
-                variant = {
-                    THUNDERBIRD: is_tb,
-                    FIREFOX: !is_tb
-                }
-            }
-            return variant
-        }
-    });
-    Object.defineProperty(this, "brandName", {
-        get: () => {
-            if (brandName === null) {
-                brandName = AppConstants.MOZ_APP_DISPLAYNAME_DO_NOT_USE
-            }
-            return brandName
-        }
-    });
-    this.setSessionRestored = () => { sessionRestored = true };
-    this.sessionRestored = () => sessionRestored;
-    return this
-})();
-
-const SharedGlobal = {};
-ChromeUtils.defineLazyGetter(SharedGlobal, "widgetCallbacks", () => { return new Map() });
-
-const lazy = {
-    startupPromises: new Set()
-};
-
-const _ucUtils = {
-    get sharedGlobal() {
-        return SharedGlobal
-    },
-    get fs() {
-        return FS;
-    },
-    startupFinished() {
-        if (loaderModuleLink.sessionRestored() || lazy.startupPromises === null) {
-            return Promise.resolve();
-        }
-        if (lazy.startupPromises.size === 0) {
-            const obs_topic = loaderModuleLink.variant.FIREFOX
-                ? "sessionstore-windows-restored"
-                : "browser-delayed-startup-finished";
-            const startupObserver = () => {
-                Services.obs.removeObserver(startupObserver, obs_topic);
-                loaderModuleLink.setSessionRestored();
-                for (let f of lazy.startupPromises) { f() }
-                lazy.startupPromises.clear();
-                lazy.startupPromises = null;
-            }
-            Services.obs.addObserver(startupObserver, obs_topic);
-        }
-        return new Promise(resolve => lazy.startupPromises.add(resolve))
-    },
-    createElement: _uc.createElement,
-}
-
 try {
     function UserChrome_js() {
         Services.obs.addObserver(this, 'domwindowopened', false);
@@ -189,8 +108,7 @@ try {
 
                 window.UC = UC;
                 window._uc = _uc;
-                window._ucUtils = _ucUtils;
-
+                
                 if (window._gBrowser) // bug 1443849
                     window.gBrowser = window._gBrowser;
 
