@@ -4,7 +4,9 @@
 
 基于 alice0775 环境打包，引用了Dummy的反签名代码，加入了来自`xiaoxiaoflood/firefox-scripts`环境的 Bootstrap Loader，支持 onlyonce 属性，使用这个 userChrome.js 可以安装适配过的传统扩展，部分适配`xiaoxiaoflood`/`mrOtherGuy`这个两个环境的脚本也可以无需移植就能使用。
 
-之前是从 Firefox 100开始改的，实际上可以向下兼容，具体版本没有测试。
+~~之前是从 Firefox 100开始改的，实际上可以向下兼容，具体版本没有测试。~~
+
+从 20250219 以后的版本建议兼容性为 Firefox 135+
 
 ## 使用说明
 

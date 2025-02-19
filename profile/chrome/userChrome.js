@@ -219,13 +219,13 @@
                     var istream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(Ci.nsIFileInputStream);
                     while (files.hasMoreElements()) {
                         var file = files.getNext().QueryInterface(Ci.nsIFile);
-                        if (/\.uc\.js$|\.uc\.xul$/i.test(file.leafName)
+                        if (/\.uc\.js$|\.uc\.xul$|\.mjs$/i.test(file.leafName)
                             || /\.xul$/i.test(file.leafName) && /\xul$/i.test(this.arrSubdir[i])) {
                             var script = getScriptData(
                                 this.AUTOREMOVEBOM ? deleteBOMreadFile(file) : readFile(file, true)
                                 , file);
                             script.dir = dir;
-                            if (/\.uc\.js$/i.test(script.filename)) {
+                            if (/\.uc\.js$|\.mjs$/i.test(script.filename)) {
                                 script.ucjs = checkUCJS(script.file.path);
                                 s.push(script);
                             } else {
@@ -309,6 +309,9 @@
                     filename: aFile.leafName,
                     file: aFile,
                     url: url,
+                    async: async,
+                    isESM: aFile.leafName.endsWith(".mjs"),
+                    inBackground: aFile.leafName.endsWith(".sys.mjs") || /\/\/ @backgroundmodule\b/.test(header),
                     //namespace: "",
                     charset: charset,
                     description: description,
@@ -562,7 +565,7 @@
                     }
                     continue;
                     */
-                    if (!script.async) {
+                    if (!script.async && !script.isESM) {
                         try {
                             if (script.charset)
                                 Services.scriptloader.loadSubScript(
@@ -581,11 +584,32 @@
                             this.error(script.filename, ex);
                         }
                     } else {
-                        ChromeUtils.compileScript(
-                            script.url + "?" + this.getLastModifiedTime(script.file)
-                        ).then((r) => {
-                            r.executeInGlobal(/*global*/ target, { reportExceptions: true });
-                        }).catch((ex) => { this.error(script.filename, ex); });
+                        if (script.isESM & !script.isRunning) {
+                            ChromeUtils.compileScript(
+                                `data:,"use strict";
+                                import("${script.url}")
+                                .catch(e=>{ throw new Error(e.message,"${script.filename}",e.lineNumber) })`
+                            ).then(r => {
+                                if (r) {
+                                    r.executeInGlobal(/*global*/ target, { reportExceptions: true });
+                                    script.isRunning = true;
+                                }
+                            }).catch(ex => {
+                                this.error(`@ ${script.filename}: script couldn't be compiled because:`, ex);
+                            })
+                        } else {
+                            ChromeUtils.compileScript(
+                                script.url + "?" + this.getLastModifiedTime(script.file)
+                            ).then((r) => {
+                                if (r) {
+                                    r.executeInGlobal(/*global*/ target, { reportExceptions: true });
+                                    script.isRunning = true;
+                                }
+                            }).catch((ex) => {
+                                this.error(`@ ${script.filename}: script couldn't be compiled because:`, ex);
+                            })
+                        }
+                        script.isRunning = true;
                     }
                 }
             }
