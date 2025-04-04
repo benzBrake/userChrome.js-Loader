@@ -8,12 +8,14 @@
 // supports regexes in the include/exclude lines
 // scripts without metadata will run only on the main browser window, for backwards compatibility
 //
-// 1.Including function of UCJS_loader.
-// 2.Compatible with Fx2 and Fx3.0b5pre
+// 1.Including function of UCJS_loader. <--- not work in Firefox135+
+// 2.Compatible with Firefox139
 // 3.Cached script data (path, leafname, regex)
-// 4.Support window.userChrome_js.loadOverlay(overlay [,observer]) //
+// 4.Support window.userChrome_js.loadOverlay(overlay [,observer]) <--- not work in recent Firefox
 // Modified by Alice0775
 //
+// @version       2025/04/02 read meta @sandbox
+// @version       2025/04/02 fix loadscript uc.js into sandbox
 // @version       2025/01/05 fix error handler
 // @version       2025/01/04 add error handler
 // @version       2025/01/03 use ChromeUtils.compileScript if async
@@ -221,9 +223,7 @@
                         var file = files.getNext().QueryInterface(Ci.nsIFile);
                         if (/\.uc\.js$|\.uc\.xul$|\.mjs$/i.test(file.leafName)
                             || /\.xul$/i.test(file.leafName) && /\xul$/i.test(this.arrSubdir[i])) {
-                            var script = getScriptData(
-                                this.AUTOREMOVEBOM ? deleteBOMreadFile(file) : readFile(file, true)
-                                , file);
+                            var script = getScriptData(readFile(file, true), file);
                             script.dir = dir;
                             if (/\.uc\.js$|\.mjs$/i.test(script.filename)) {
                                 script.ucjs = checkUCJS(script.file.path);
@@ -266,7 +266,7 @@
 
             //メタデータ収集
             function getScriptData (aContent, aFile) {
-                var charset, description, fullDescription, async;
+                var charset, description, fullDescription, async, sandbox;
                 var header = (aContent.match(/^\/\/ ==UserScript==[ \t]*\n(?:.*\n)*?\/\/ ==\/UserScript==[ \t]*\n/m) || [""])[0];
                 var match, rex = { include: [], exclude: [] };
                 while ((match = findNextRe.exec(header))) {
@@ -282,10 +282,20 @@
                     charset = match.length > 0 ? match[1].replace(/^\s+/, "") : "";
 
                 match = header.match(/\/\/ @async\b(.+)\s*/i);
-                async = "";
+                async = false;
                 //try
-                if (match)
+                if (match) {
                     async = match.length > 0 ? match[1].replace(/^\s+/, "") : "";
+                    async = (sandbox == "true");
+                }
+
+                match = header.match(/\/\/ @sandbox\b(.+)\s*/i);
+                sandbox = true; // default sandboxed
+                //try
+                if (match) {
+                    sandbox = match.length > 0 ? match[1].replace(/^\s+/, "") : "";
+                    sandbox = !(sandbox == "false");
+                }
 
                 const hasLongDescription = (/^\/\/\ @long-description/im).test(header);
                 description = hasLongDescription
@@ -309,16 +319,16 @@
                     filename: aFile.leafName,
                     file: aFile,
                     url: url,
-                    async: async,
                     isESM: aFile.leafName.endsWith(".mjs"),
                     inBackground: aFile.leafName.endsWith(".sys.mjs") || /\/\/ @backgroundmodule\b/.test(header),
                     //namespace: "",
                     charset: charset,
                     description: description,
+                    async: async,
+                    sandbox: sandbox,
                     //code: aContent.replace(header, ""),
                     icon: header.match(/\/\/ @icon\s+(.+)\s*$/im)?.[1],
                     regex: new RegExp("^" + exclude + "(" + (rex.include.join("|") || ".*") + ")$", "i"),
-                    onlyonce: /\/\/ @onlyonce\b/.test(header),
                     homepageURL: header.match(/\/\/ @homepage(URL)?\s+(.+)\s*$/im)?.[2],
                     downloadURL: header.match(/\/\/ @downloadURL\s+(.+)\s*$/im)?.[1],
                     optionsURL: header.match(/\/\/ @optionsURL\s+(.+)\s*$/im)?.[1],
@@ -522,6 +532,24 @@
                 return "1.6";
             })();
 
+            let target = win = doc.defaultView;
+
+            target = new Cu.Sandbox(win, {
+                sandboxPrototype: win,
+                sameZoneAs: win,
+            });
+            /* toSource() is not available in sandbox */
+            Cu.evalInSandbox(`
+                  Function.prototype.toSource = window.Function.prototype.toSource;
+                  Object.prototype.toSource = window.Object.prototype.toSource;
+                  Array.prototype.toSource = window.Array.prototype.toSource;
+              `, target);
+            win.addEventListener("unload", () => {
+                setTimeout(() => {
+                    Cu.nukeSandbox(target);
+                }, 0);
+            }, { once: true });
+
             for (var m = 0, len = this.scripts.length; m < len; m++) {
                 script = this.scripts[m];
                 if (this.ALWAYSEXECUTE.indexOf(script.filename) < 0
@@ -529,13 +557,6 @@
                         || !!this.dirDisable[script.dir]
                         || !!this.scriptDisable[script.filename])) continue;
                 if (!script.regex.test(dochref)) continue;
-
-                if (script.onlyonce && script.isRunning) {
-                    if (script.startup) {
-                        eval(script.startup);
-                    }
-                    continue;
-                }
 
                 if (script.ucjs) { //for UCJS_loader
                     if (this.INFO) this.debug("loadUCJSSubScript: " + script.filename);
@@ -549,7 +570,6 @@
                     }
                 } else { //Not for UCJS_loader
                     if (this.INFO) this.debug("loadSubScript: " + script.filename);
-                    let target = doc.defaultView;
                     /*
                     try {
                       if (script.charset)
@@ -570,16 +590,13 @@
                             if (script.charset)
                                 Services.scriptloader.loadSubScript(
                                     script.url + "?" + this.getLastModifiedTime(script.file),
-                                    script.onlyonce ? { window: target } : target, script.charset);
+                                    script.sandbox ? target : doc.defaultView, script.charset);
                             else
                                 Services.scriptloader.loadSubScript(
                                     script.url + "?" + this.getLastModifiedTime(script.file),
-                                    script.onlyonce ? { window: target } : target);
+                                    script.sandbox ? target : doc.defaultView);
 
                             script.isRunning = true;
-                            if (script.startup) {
-                                eval(script.startup);
-                            }
                         } catch (ex) {
                             this.error(script.filename, ex);
                         }
@@ -591,7 +608,7 @@
                                 .catch(e=>{ throw new Error(e.message,"${script.filename}",e.lineNumber) })`
                             ).then(r => {
                                 if (r) {
-                                    r.executeInGlobal(/*global*/ target, { reportExceptions: true });
+                                    r.executeInGlobal(/*global*/ script.sandbox ? target : doc.defaultView, { reportExceptions: true });
                                     script.isRunning = true;
                                 }
                             }).catch(ex => {
@@ -602,14 +619,13 @@
                                 script.url + "?" + this.getLastModifiedTime(script.file)
                             ).then((r) => {
                                 if (r) {
-                                    r.executeInGlobal(/*global*/ target, { reportExceptions: true });
+                                    r.executeInGlobal(/*global*/ script.sandbox ? target : doc.defaultView, { reportExceptions: true });
                                     script.isRunning = true;
                                 }
                             }).catch((ex) => {
                                 this.error(`@ ${script.filename}: script couldn't be compiled because:`, ex);
                             })
                         }
-                        script.isRunning = true;
                     }
                 }
             }
