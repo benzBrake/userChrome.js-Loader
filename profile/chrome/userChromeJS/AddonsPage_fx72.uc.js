@@ -5,22 +5,24 @@
 // @include         main
 // @charset         utf-8
 // @compatibility   Firefox 72
-// @version         2025.03.08 Add English / Japanese String
-// @version         2025.01.31 Remove Cu.import, per Bug 1881888 
-// @version         2023.07.12 Removed Services.jsm, per Bug 1780695
-// @version         2022.11.18 支持 fx-autoconfig
-// @version         2022.10.01 支持隐藏自身
-// @version         2022.09.27 Fx106
-// @version         2022.02.04 Fx98
-// @version         2021.03.31 Fx89
-// @version         2021.02.05 Fx87
-// @version         2021.01.30 Fx85
-// @version         2020.06.28 Fx78
-// @version         2019.12.07
+// @version         2025.04.04
 // @downloadURL     https://raw.github.com/ywzhaiqi/userChromeJS/master/AddonsPage/AddonsPage.uc.js
 // @homepageURL     https://github.com/ywzhaiqi/userChromeJS/tree/master/AddonsPage
 // @reviewURL       http://bbs.kafan.cn/thread-1617407-1-1.html
 // @optionsURL      about:config?filter=view_source.editor.path
+// @note            2025.04.04 Fx139 fix lazy is undefined
+// @note            2025.03.08 Add English / Japanese String
+// @note            2025.01.31 Remove Cu.import, per Bug 1881888 
+// @note            2023.07.12 Removed Services.jsm, per Bug 1780695
+// @note            2022.11.18 支持 fx-autoconfig
+// @note            2022.10.01 支持隐藏自身
+// @note            2022.09.27 Fx106
+// @note            2022.02.04 Fx98
+// @note            2021.03.31 Fx89
+// @note            2021.02.05 Fx87
+// @note            2021.01.30 Fx85
+// @note            2020.06.28 Fx78
+// @note            2019.12.07
 // @note            - 附件组件页面右键新增查看所在目录（支持扩展、主题、插件）、复制名字。Greasemonkey、Scriptish 自带已经存在
 // @note            - 附件组件详细信息页面新增GM脚本、扩展、主题安装地址和插件路径，右键即复制
 // @note            - 新增 uc脚本管理页面
@@ -34,23 +36,23 @@
     "use strict";
 
     const Services = globalThis.Services || ChromeUtils.import("resource://gre/modules/Services.jsm").Services;
-
+    const apLazy = {};
     try {
-        ChromeUtils.defineESModuleGetters(lazy, {
+        ChromeUtils.defineESModuleGetters(apLazy, {
             AddonManager: "resource://gre/modules/AddonManager.sys.mjs",
             AddonManagerPrivate: "resource://gre/modules/AddonManager.sys.mjs",
         });
     } catch (e) {
-        XPCOMUtils.defineLazyModuleGetters(lazy, {
+        XPCOMUtils.defineLazyModuleGetters(apLazy, {
             AddonManager: "resource://gre/modules/AddonManager.jsm",
             AddonManagerPrivate: "resource://gre/modules/AddonManager.jsm",
         });
     }
     if (!window.AddonManager) {
-        window.AddonManager = lazy.AddonManager;
+        window.AddonManager = apLazy.AddonManager;
     }
     if (!window.AddonManagerPrivate) {
-        window.AddonManagerPrivate = lazy.AddonManagerPrivate;
+        window.AddonManagerPrivate = apLazy.AddonManagerPrivate;
     }
     const iconURL = "chrome://mozapps/skin/extensions/extensionGeneric.svg";  // uc 脚本列表的图标
     const AM_FILENAME = Components.stack.filename.split("/").pop().split("?")[0];
