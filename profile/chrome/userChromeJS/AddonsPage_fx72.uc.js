@@ -10,7 +10,7 @@
 // @homepageURL     https://github.com/ywzhaiqi/userChromeJS/tree/master/AddonsPage
 // @reviewURL       http://bbs.kafan.cn/thread-1617407-1-1.html
 // @optionsURL      about:config?filter=view_source.editor.path
-// @note            2025.04.04 Fx139 fix lazy is undefined
+// @note            2025.04.04 Fx137 fix lazy is undefined
 // @note            2025.03.08 Add English / Japanese String
 // @note            2025.01.31 Remove Cu.import, per Bug 1881888 
 // @note            2023.07.12 Removed Services.jsm, per Bug 1780695
