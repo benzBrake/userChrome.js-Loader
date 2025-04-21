@@ -291,7 +291,7 @@
 
                 match = header.match(/\/\/ @sandbox\b(.+)\s*/i);
                 sandbox = true; // default sandboxed
-                //try
+
                 if (match) {
                     sandbox = match.length > 0 ? match[1].replace(/^\s+/, "") : "";
                     sandbox = !(sandbox == "false");
@@ -329,6 +329,7 @@
                     //code: aContent.replace(header, ""),
                     icon: header.match(/\/\/ @icon\s+(.+)\s*$/im)?.[1],
                     regex: new RegExp("^" + exclude + "(" + (rex.include.join("|") || ".*") + ")$", "i"),
+                    onlyonce: /\/\/ @onlyonce\b/.test(header),
                     homepageURL: header.match(/\/\/ @homepage(URL)?\s+(.+)\s*$/im)?.[2],
                     downloadURL: header.match(/\/\/ @downloadURL\s+(.+)\s*$/im)?.[1],
                     optionsURL: header.match(/\/\/ @optionsURL\s+(.+)\s*$/im)?.[1],
@@ -538,6 +539,17 @@
                 sandboxPrototype: win,
                 sameZoneAs: win,
             });
+
+
+            // 兼容 ucf setUnloadMap
+            Cu.evalInSandbox(`
+                const { initUloadMap, setUnloadMap } = ChromeUtils.importESModule("chrome://userchromejs/content/ucf.sys.mjs")
+                initUloadMap(window);
+                globalThis.setUnloadMap = setUnloadMap;
+            `, target);
+
+            this[Symbol.for("sandbox")] = target;
+
             /* toSource() is not available in sandbox */
             Cu.evalInSandbox(`
                   Function.prototype.toSource = window.Function.prototype.toSource;
@@ -549,7 +561,6 @@
                     Cu.nukeSandbox(target);
                 }, 0);
             }, { once: true });
-
             for (var m = 0, len = this.scripts.length; m < len; m++) {
                 script = this.scripts[m];
                 if (this.ALWAYSEXECUTE.indexOf(script.filename) < 0
@@ -557,6 +568,13 @@
                         || !!this.dirDisable[script.dir]
                         || !!this.scriptDisable[script.filename])) continue;
                 if (!script.regex.test(dochref)) continue;
+
+                if (script.onlyonce && script.isRunning) {
+                    if (script.startup) {
+                        eval(script.startup);
+                    }
+                    continue;
+                }
 
                 if (script.ucjs) { //for UCJS_loader
                     if (this.INFO) this.debug("loadUCJSSubScript: " + script.filename);
@@ -597,6 +615,13 @@
                                     script.sandbox ? target : doc.defaultView);
 
                             script.isRunning = true;
+                            if (script.startup) {
+                                if (script.sandbox) {
+                                    target.evalInSandbox(script.startup, target);
+                                } else {
+                                    eval(script.startup);
+                                }
+                            }
                         } catch (ex) {
                             this.error(script.filename, ex);
                         }
@@ -605,10 +630,10 @@
                             ChromeUtils.compileScript(
                                 `data:,"use strict";
                                 import("${script.url}")
-                                .catch(e=>{ throw new Error(e.message,"${script.filename}",e.lineNumber) })`
+                                .catch(e=>{ throw new Error(e.message,"${script.filename}", e.lineNumber) })`
                             ).then(r => {
                                 if (r) {
-                                    r.executeInGlobal(/*global*/ script.sandbox ? target : doc.defaultView, { reportExceptions: true });
+                                    r.executeInGlobal(/*global*/ target, { reportExceptions: true });
                                     script.isRunning = true;
                                 }
                             }).catch(ex => {
