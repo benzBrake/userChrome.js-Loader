@@ -7,7 +7,7 @@ function initUloadMap (win) {
     handler.window = win
     handler.unloadMap = new Map();
     win.addEventListener("unload", () => {
-        for (const [key, value] of unloadMap) {
+        for (const [key, value] of handler.unloadMap) {
             for (const { func, context } of value) {
                 try {
                     func.apply(context);
