@@ -222,7 +222,11 @@
                         var file = files.getNext().QueryInterface(Ci.nsIFile);
                         if (/\.uc\.js$|\.uc\.xul$|\.mjs$/i.test(file.leafName)
                             || /\.xul$/i.test(file.leafName) && /\xul$/i.test(this.arrSubdir[i])) {
-                            var script = getScriptData(readFile(file, true), file);
+                            try {
+                                var script = getScriptData(readFile(file, true), file);
+                            } catch (e) {
+                                globalThis.console.error(e);
+                            }
                             script.dir = dir;
                             if (/\.uc\.js$|\.mjs$/i.test(script.filename)) {
                                 script.ucjs = checkUCJS(script.file.path);
@@ -300,11 +304,22 @@
                 }
 
                 if (actor) {
-                    const groups = extractSingleMeta(header, /\/\/ @group\s+(.+)\s*$/im);
-                    const match = extractSingleMeta(header, /\/\/ @match\s+(.+)\s*$/im);
-                    const events = extractSingleMeta(header, /\/\/ @event\s+(.+)\s*$/im);
-                    const allFrames = extractSingleMeta(header, /\/\/ @allframes\s+(.+)\s*$/im) === "true";
-                    const eventsObj = events
+                    const match = extractSingleMeta(header, /\/\/ @actor:match\s+(.+)\s*$/im)
+                    const actorParams = {};
+                    if (match) {
+                        actorParams.matches = match.split(",").map(m => m.trim());
+                    }
+
+                    const kindStr = extractSingleMeta(header, /\/\/ @actor:kind\s+(.+)\s*$/im);
+                    if (kindStr) actorParams.kind = kind.trim();
+                    const includeChromeStr = extractSingleMeta(header, /\/\/ @actor:includeChrome\s+(.+)\s*$/im);
+                    if (includeChromeStr) actorParams.includeChrome = includeChromeStr.trim() === 'true';
+                    const groupsStr = extractSingleMeta(header, /\/\/ @actor:groups\s+(.+)\s*$/im);
+                    if (groupsStr) actorParams.messageManagerGroups = groupsStr.trim().split(/\s+,\s+/).map(g => g.trim());
+
+                    // 处理 events 字段，转换为对象形式
+                    const events = extractSingleMeta(header, /\/\/ @actor:events\s+(.+)\s*$/im);
+                    actorParams.events = events
                         ? events.split(",").reduce((obj, e) => {
                             const eventName = e.trim();
                             if (eventName) {
@@ -313,15 +328,18 @@
                             return obj;
                         }, {})
                         : {};
+
+                    const allFrames = extractSingleMeta(header, /\/\/ @actor:allframes\s+(.+)\s*$/im);
+                    if (allFrames) actorParams.allFrames = allFrames === 'true';
+
+                    // 将结果合并到对象 s 中
                     Object.assign(s, {
                         inBackground: true,
                         actor,
-                        groups: groups ? groups.split(",").map(g => g.trim()) : [],
-                        match: match ? match.split(",").map(m => m.trim()) : [],
-                        events: eventsObj,
-                        allFrames
+                        actorParams
                     });
                 }
+
                 return s;
 
                 function extractHeader (content) {
@@ -634,7 +652,7 @@
                     }
                     continue;
                     */
-                    if (!script.async && !script.inBackground) {
+                    if (!script.async && !script.isESM) {
                         try {
                             if (script.charset)
                                 Services.scriptloader.loadSubScript(
@@ -660,23 +678,43 @@
                         try {
                             const scriptURI = resolveChromeURL(script.url);
                             if (script.actor) { // For actor
-                                ChromeUtils.registerWindowActor(script.actor, {
-                                    allFrames: script.allFrames,
-                                    parent: { esModuleURI: scriptURI },
-                                    messageManagerGroups: ["browsers"],
-                                    child: { esModuleURI: scriptURI, events: script.events }
-                                });
+                                if (!script.actorParams) {
+                                    script.actorParams = {};
+                                }
+                                script.actorParams.parent = {
+                                    esModuleURI: scriptURI
+                                };
+                                script.actorParams.child = {
+                                    esModuleURI: scriptURI,
+                                    events: {}
+                                };
+                                for (let [key, value] of Object.entries(script.actorParams.events)) {
+                                    script.actorParams.child.events[key] = value;
+                                }
+                                delete script.actorParams.events;
+                                ChromeUtils.registerWindowActor(script.actor, script.actorParams);
+                                script.isRunning = true;
                             } else { // For ES6 Module
-                                ChromeUtils.importESModule(scriptURI);
+                                // ChromeUtils.importESModule(scriptURI);
+                                ChromeUtils.compileScript(
+                                    `data:,"use strict";
+                                    import("${script.url}")
+                                    .catch(e=>{ throw new Error(e.message,"${script.filename}", e.lineNumber) })`
+                                ).then(r => {
+                                    if (r) {
+                                        r.executeInGlobal(/*global*/ target, { reportExceptions: true });
+                                        script.isRunning = true;
+                                    }
+                                }).catch(ex => {
+                                    this.error(`@ ${script.filename}: script couldn't be compiled because:`, ex);
+                                })
                             }
-                            script.isRunning = true;
                         } catch (ex) {
                             this.debug(ex);
                         }
                     } else {
-                        ChromeUtils.compileScript(
-                            script.url + "?" + this.getLastModifiedTime(script.file)
-                        ).then((r) => {
+                        let es = script.isESM ? `data:,"use strict";import("${script.url}").catch(console.error)` : script.url + "?" + this.getLastModifiedTime(script.file);
+                        ChromeUtils.compileScript(es).then((r) => {
                             if (r) {
                                 r.executeInGlobal(/*global*/ script.sandbox ? target : doc.defaultView, { reportExceptions: true });
                                 script.isRunning = true;
