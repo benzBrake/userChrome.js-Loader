@@ -85,6 +85,7 @@
 
 (function () {
     "use strict";
+    const { classes: Cc, interfaces: Ci, results: Cr, utils: Cu } = Components;
     var { AppConstants } = AppConstants || ChromeUtils.importESModule(
         "resource://gre/modules/AppConstants.sys.mjs"
     );
@@ -164,8 +165,6 @@
 
         //スクリプトデータを作成
         getScripts: function () {
-            const Cc = Components.classes;
-            const Ci = Components.interfaces;
             const fph = Services.io.getProtocolHandler("file").QueryInterface(Ci.nsIFileProtocolHandler);
             const ds = Services.dirsvc;
             var Start = new Date().getTime();
@@ -266,76 +265,108 @@
 
             //メタデータ収集
             function getScriptData (aContent, aFile) {
-                var charset, description, fullDescription, async, sandbox;
-                var header = (aContent.match(/^\/\/ ==UserScript==[ \t]*\n(?:.*\n)*?\/\/ ==\/UserScript==[ \t]*\n/m) || [""])[0];
-                var match, rex = { include: [], exclude: [] };
-                while ((match = findNextRe.exec(header))) {
-                    rex[match[1]].push(match[2].replace(/^main$/i, mainWindowURL).replace(/\W/g, "\\$&").replace(/\\\*/g, ".*?"));
+                const header = extractHeader(aContent);
+                const { include, exclude } = buildRegexRules(header, mainWindowURL, findNextRe);
+                const { description, fullDescription } = extractDescription(header, aFile);
+
+                const charset = extractSingleMeta(header, /\/\/ @charset\b(.+)\s*/i);
+                const asyncMatch = extractSingleMeta(header, /\/\/ @async\b(.+)\s*/i);
+                const sandboxMatch = extractSingleMeta(header, /\/\/ @sandbox\b(.+)\s*/i);
+                const asyncFlag = asyncMatch === "true";
+                const sandboxFlag = sandboxMatch !== "false";
+                const url = fph.getURLSpecFromActualFile(aFile);
+                const actor = extractSingleMeta(header, /\/\/ @actor\b(.+)\s*/i);
+                const s = {
+                    filename: aFile.leafName,
+                    file: aFile,
+                    url,
+                    isESM: aFile.leafName.endsWith(".mjs"),
+                    inBackground: aFile.leafName.endsWith(".sys.mjs") || /\/\/ @backgroundmodule\b/.test(header),
+                    //namespace: "",
+                    charset,
+                    description,
+                    async: asyncFlag,
+                    sandbox: sandboxFlag,
+                    //code: aContent.replace(header, ""),
+                    icon: extractSingleMeta(header, /\/\/ @icon\s+(.+)\s*$/im),
+                    regex: new RegExp(`^${exclude}(${include.join("|") || ".*"})$`, "i"),
+                    onlyonce: /\/\/ @onlyonce\b/.test(header),
+                    homepageURL: extractSingleMeta(header, /\/\/ @homepage(URL)?\s+(.+)\s*$/im),
+                    downloadURL: extractSingleMeta(header, /\/\/ @downloadURL\s+(.+)\s*$/im),
+                    optionsURL: extractSingleMeta(header, /\/\/ @optionsURL\s+(.+)\s*$/im),
+                    startup: extractSingleMeta(header, /\/\/ @startup\s+(.+)\s*$/im),
+                    license: extractSingleMeta(header, /\/\/ @license\s+(.+)\s*$/im),
+                    fullDescription
                 }
-                if (rex.include.length == 0) rex.include.push(mainWindowURL);
-                var exclude = rex.exclude.length > 0 ? "(?!" + rex.exclude.join("$|") + "$)" : "";
 
-                match = header.match(/\/\/ @charset\b(.+)\s*/i);
-                charset = "";
-                //try
-                if (match)
-                    charset = match.length > 0 ? match[1].replace(/^\s+/, "") : "";
+                if (actor) {
+                    const groups = extractSingleMeta(header, /\/\/ @group\s+(.+)\s*$/im);
+                    const match = extractSingleMeta(header, /\/\/ @match\s+(.+)\s*$/im);
+                    const events = extractSingleMeta(header, /\/\/ @event\s+(.+)\s*$/im);
+                    const allFrames = extractSingleMeta(header, /\/\/ @allframes\s+(.+)\s*$/im) === "true";
+                    const eventsObj = events
+                        ? events.split(",").reduce((obj, e) => {
+                            const eventName = e.trim();
+                            if (eventName) {
+                                obj[eventName] = { capture: true };
+                            }
+                            return obj;
+                        }, {})
+                        : {};
+                    Object.assign(s, {
+                        inBackground: true,
+                        actor,
+                        groups: groups ? groups.split(",").map(g => g.trim()) : [],
+                        match: match ? match.split(",").map(m => m.trim()) : [],
+                        events: eventsObj,
+                        allFrames
+                    });
+                }
+                return s;
 
-                match = header.match(/\/\/ @async\b(.+)\s*/i);
-                async = false;
-                //try
-                if (match) {
-                    async = match.length > 0 ? match[1].replace(/^\s+/, "") : "";
-                    async = (sandbox == "true");
+                function extractHeader (content) {
+                    return (content.match(/^\/\/ ==UserScript==[ \t]*\n(?:.*\n)*?\/\/ ==\/UserScript==[ \t]*\n/m) || [""])[0];
                 }
 
-                match = header.match(/\/\/ @sandbox\b(.+)\s*/i);
-                sandbox = true; // default sandboxed
-
-                if (match) {
-                    sandbox = match.length > 0 ? match[1].replace(/^\s+/, "") : "";
-                    sandbox = !(sandbox == "false");
+                function extractSingleMeta (header, pattern) {
+                    const match = header.match(pattern);
+                    return match?.[1]?.trim() || "";
                 }
 
-                const hasLongDescription = (/^\/\/\ @long-description/im).test(header);
-                description = hasLongDescription
-                    ? header.match(/\/\/ @description\s+.*?\/\*\s*(.+?)\s*\*\//is)?.[1]
-                    : header.match(/\/\/ @description\s+(.+)\s*$/im)?.[1];
+                function buildRegexRules (header, mainWindowURL, findNextRe) {
+                    const rex = { include: [], exclude: [] };
+                    let match;
+                    while ((match = findNextRe.exec(header))) {
+                        rex[match[1]].push(
+                            match[2]
+                                .replace(/^main$/i, mainWindowURL)
+                                .replace(/\W/g, "\\$&")
+                                .replace(/\\\*/g, ".*?")
+                        );
+                    }
+                    if (rex.include.length === 0) {
+                        rex.include.push(mainWindowURL);
+                    }
+                    const exclude = rex.exclude.length > 0 ? `(?!${rex.exclude.join("$|")}$)` : "";
+                    return { include: rex.include, exclude };
+                };
 
-                if (description == "" || !description) {
-                    description = aFile.leafName;
-                } else {
-                    fullDescription = description;
+                function extractDescription (header, file) {
+                    const hasLongDescription = /^\/\/\ @long-description/im.test(header);
+                    let description = hasLongDescription
+                        ? header.match(/\/\/ @description\s+.*?\/\*\s*(.+?)\s*\*\//is)?.[1]
+                        : header.match(/\/\/ @description\s+(.+)\s*$/im)?.[1];
+                    if (!description) {
+                        description = file.leafName;
+                    }
+                    const fullDescription = description;
                     description = getFirstLine(description);
+                    return { description, fullDescription };
                 }
-                var url = fph.getURLSpecFromActualFile(aFile);
 
                 function getFirstLine (text) {
                     const lines = text.split(/\r\n|\r|\n/);
                     return lines[0] || text;
-                }
-
-                return {
-                    filename: aFile.leafName,
-                    file: aFile,
-                    url: url,
-                    isESM: aFile.leafName.endsWith(".mjs"),
-                    inBackground: aFile.leafName.endsWith(".sys.mjs") || /\/\/ @backgroundmodule\b/.test(header),
-                    //namespace: "",
-                    charset: charset,
-                    description: description,
-                    async: async,
-                    sandbox: sandbox,
-                    //code: aContent.replace(header, ""),
-                    icon: header.match(/\/\/ @icon\s+(.+)\s*$/im)?.[1],
-                    regex: new RegExp("^" + exclude + "(" + (rex.include.join("|") || ".*") + ")$", "i"),
-                    onlyonce: /\/\/ @onlyonce\b/.test(header),
-                    homepageURL: header.match(/\/\/ @homepage(URL)?\s+(.+)\s*$/im)?.[2],
-                    downloadURL: header.match(/\/\/ @downloadURL\s+(.+)\s*$/im)?.[1],
-                    optionsURL: header.match(/\/\/ @optionsURL\s+(.+)\s*$/im)?.[1],
-                    startup: header.match(/\/\/ @startup\s+(.+)\s*$/im)?.[1],
-                    license: header.match(/\/\/ @license\s+(.+)\s*$/im)?.[1],
-                    fullDescription
                 }
             }
 
@@ -567,7 +598,7 @@
                     && (!!this.dirDisable['*']
                         || !!this.dirDisable[script.dir]
                         || !!this.scriptDisable[script.filename])) continue;
-                if (!script.regex.test(dochref)) continue;
+                if (!script.inBackground && !script.regex.test(dochref)) continue;
 
                 if (script.onlyonce && script.isRunning) {
                     if (script.startup) {
@@ -587,7 +618,7 @@
                         this.error(script.filename, ex);
                     }
                 } else { //Not for UCJS_loader
-                    if (this.INFO) this.debug("loadSubScript: " + script.filename);
+                    if (this.INFO) this.debug((script.inBackground ? "loadModule: " : "loadSubScript: ") + script.filename);
                     /*
                     try {
                       if (script.charset)
@@ -603,7 +634,7 @@
                     }
                     continue;
                     */
-                    if (!script.async && !script.isESM) {
+                    if (!script.async && !script.inBackground) {
                         try {
                             if (script.charset)
                                 Services.scriptloader.loadSubScript(
@@ -625,34 +656,40 @@
                         } catch (ex) {
                             this.error(script.filename, ex);
                         }
-                    } else {
-                        if (script.isESM & !script.isRunning) {
-                            ChromeUtils.compileScript(
-                                `data:,"use strict";
-                                import("${script.url}")
-                                .catch(e=>{ throw new Error(e.message,"${script.filename}", e.lineNumber) })`
-                            ).then(r => {
-                                if (r) {
-                                    r.executeInGlobal(/*global*/ target, { reportExceptions: true });
-                                    script.isRunning = true;
-                                }
-                            }).catch(ex => {
-                                this.error(`@ ${script.filename}: script couldn't be compiled because:`, ex);
-                            })
-                        } else {
-                            ChromeUtils.compileScript(
-                                script.url + "?" + this.getLastModifiedTime(script.file)
-                            ).then((r) => {
-                                if (r) {
-                                    r.executeInGlobal(/*global*/ script.sandbox ? target : doc.defaultView, { reportExceptions: true });
-                                    script.isRunning = true;
-                                }
-                            }).catch((ex) => {
-                                this.error(`@ ${script.filename}: script couldn't be compiled because:`, ex);
-                            })
+                    } else if (script.inBackground) {
+                        try {
+                            const scriptURI = resolveChromeURL(script.url);
+                            if (script.actor) { // For actor
+                                ChromeUtils.registerWindowActor(script.actor, {
+                                    allFrames: script.allFrames,
+                                    parent: { esModuleURI: scriptURI },
+                                    messageManagerGroups: ["browsers"],
+                                    child: { esModuleURI: scriptURI, events: script.events }
+                                });
+                            } else { // For ES6 Module
+                                ChromeUtils.importESModule(scriptURI);
+                            }
+                            script.isRunning = true;
+                        } catch (ex) {
+                            this.debug(ex);
                         }
+                    } else {
+                        ChromeUtils.compileScript(
+                            script.url + "?" + this.getLastModifiedTime(script.file)
+                        ).then((r) => {
+                            if (r) {
+                                r.executeInGlobal(/*global*/ script.sandbox ? target : doc.defaultView, { reportExceptions: true });
+                                script.isRunning = true;
+                            }
+                        }).catch((ex) => {
+                            this.error(`@ ${script.filename}: script couldn't be compiled because:`, ex);
+                        })
                     }
                 }
+            }
+
+            function resolveChromeURL (fileUrl) {
+                return fileUrl.replace("file:///" + PathUtils.profileDir.replace(/\\/g, '/') + "/chrome", "chrome://userchrome/content")
             }
         },
 
