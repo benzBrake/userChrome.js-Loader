@@ -15,6 +15,7 @@
 // Modified by Alice0775
 //
 // @version       2025/05/11 fix extended property flag(enumerable)
+// @version       2025/04/16 loadSubScript chrome:// instead of file://
 // @version       2025/04/07 default disabled sandbox
 // @version       2025/04/02 read meta @sandbox
 // @version       2025/04/02 fix loadscript uc.js into sandbox
@@ -210,6 +211,11 @@
 
             var findNextRe = /^\/\/ @(include|exclude)[ \t]+(\S+)/gm;
             this.directory = { name: [], UCJS: [], enable: [] };
+            var chromeDirPath = ds.get("UChrm", Ci.nsIFile).path;
+            if (navigator.platform.indexOf("Win") == 0)
+                chromeDirPath = chromeDirPath + "\\";
+            else
+                chromeDirPath = chromeDirPath + "/";
             for (var i = 0, len = this.arrSubdir.length; i < len; i++) {
                 var s = [], o = [];
                 try {
@@ -225,15 +231,11 @@
                         var file = files.getNext().QueryInterface(Ci.nsIFile);
                         if (/\.uc\.js$|\.uc\.xul$|\.mjs$/i.test(file.leafName)
                             || /\.xul$/i.test(file.leafName) && /\xul$/i.test(this.arrSubdir[i])) {
-                            try {
-                                var script = getScriptData(readFile(file, true), file);
-                            } catch (e) {
-                                this.debug(e);
-                            }
+                            var script = getScriptData(readFile(file, true), file);
                             script.dir = dir;
+                            script.chromedir = file.path.replace(chromeDirPath, "chrome://userchromejs/content/").replace(/\\/g, "/");
                             if (/\.uc\.js$|\.mjs$/i.test(script.filename)) {
                                 script.ucjs = checkUCJS(script.file.path);
-                                script.LastModifiedTime = this.getLastModifiedTime(script.file);
                                 s.push(script);
                             } else {
                                 script.xul = '<?xul-overlay href=\"' + script.url + '\"?>\n';
@@ -288,14 +290,12 @@
                     filename: aFile.leafName,
                     file: aFile,
                     url,
-                    isESM: aFile.leafName.endsWith(".mjs"),
-                    inBackground: aFile.leafName.endsWith(".sys.mjs") || /\/\/ @backgroundmodule\b/.test(header),
-                    //namespace: "",
+                    isModule: aFile.leafName.endsWith(".mjs"),
+                    isActor: false,
                     charset,
                     description,
                     async: asyncFlag,
                     sandbox: sandboxFlag,
-                    //code: aContent.replace(header, ""),
                     icon: extractSingleMeta(header, /\/\/ @icon\s+(.+)\s*$/im),
                     regex: new RegExp(`^${exclude}(${include.join("|") || ".*"})$`, "i"),
                     onlyonce: /\/\/ @onlyonce\b/.test(header),
@@ -307,7 +307,8 @@
                     fullDescription
                 }
 
-                if (actor) {
+                if (typeof actor === "string" && actor.length) {
+                    s.isActor = true;
                     const match = extractSingleMeta(header, /\/\/ @actor:match\s+(.+)\s*$/im)
                     const actorParams = {};
                     if (match) {
@@ -338,7 +339,6 @@
 
                     // 将结果合并到对象 s 中
                     Object.assign(s, {
-                        inBackground: true,
                         actor,
                         actorParams
                     });
@@ -623,7 +623,7 @@
                     && (!!this.dirDisable['*']
                         || !!this.dirDisable[script.dir]
                         || !!this.scriptDisable[script.filename])) continue;
-                if (!script.inBackground && !script.regex.test(dochref)) continue;
+                if (!script.isActor && !script.regex.test(dochref)) continue;
 
                 if (script.onlyonce && script.isRunning) {
                     if (script.startup) {
@@ -643,98 +643,99 @@
                         this.error(script.filename, ex);
                     }
                 } else { //Not for UCJS_loader
-                    if (this.INFO) this.debug((script.inBackground ? "loadModule: " : "loadSubScript: ") + script.filename);
+                    if (this.INFO) this.debug((script.isModule ? "loadModule: " : "loadSubScript: ") + script.filename);
                     /*
                     try {
-                      if (script.charset)
+                    if (script.charset)
                         Services.scriptloader.loadSubScript(
-                                   script.url + "?" + this.getLastModifiedTime(script.file),
-                                   target, script.charset);
-                      else
+                                script.url + "?" + this.getLastModifiedTime(script.file),
+                                target, script.charset);
+                    else
                         Services.scriptloader.loadSubScript(
-                                   script.url + "?" + this.getLastModifiedTime(script.file),
-                                   target);
+                                script.url + "?" + this.getLastModifiedTime(script.file),
+                                target);
                     }catch(ex) {
-                      this.error(script.filename, ex);
+                    this.error(script.filename, ex);
                     }
                     continue;
                     */
-                    if (!script.async && !script.isESM) {
-                        try {
-                            if (script.charset)
-                                Services.scriptloader.loadSubScript(
-                                    script.url + "?" + this.getLastModifiedTime(script.file),
-                                    script.sandbox ? target : doc.defaultView, script.charset);
-                            else
-                                Services.scriptloader.loadSubScript(
-                                    script.url + "?" + this.getLastModifiedTime(script.file),
-                                    script.sandbox ? target : doc.defaultView);
 
-                            script.isRunning = true;
-                            if (script.startup) {
-                                if (script.sandbox) {
-                                    target.evalInSandbox(script.startup, target);
-                                } else {
-                                    eval(script.startup);
-                                }
-                            }
-                        } catch (ex) {
-                            this.error(script.filename, ex);
-                        }
-                    } else if (script.inBackground) {
-                        try {
-                            const scriptURI = resolveChromeURL(script.url);
-                            if (script.actor) { // For actor
-                                if (!script.actorParams) {
-                                    script.actorParams = {};
-                                }
-                                script.actorParams.parent = {
-                                    esModuleURI: scriptURI
-                                };
-                                script.actorParams.child = {
-                                    esModuleURI: scriptURI,
-                                    events: {}
-                                };
-                                for (let [key, value] of Object.entries(script.actorParams.events)) {
-                                    script.actorParams.child.events[key] = value;
-                                }
-                                delete script.actorParams.events;
-                                ChromeUtils.registerWindowActor(script.actor, script.actorParams);
+                    if (!script.isModule) {
+                        if (!script.async) {
+                            try {
+                                if (script.charset)
+                                    Services.scriptloader.loadSubScript(
+                                        script.chromedir + "?" + this.getLastModifiedTime(script.file),
+                                        script.sandbox ? target : doc.defaultView, script.charset);
+                                else
+                                    Services.scriptloader.loadSubScript(
+                                        script.chromedir + "?" + this.getLastModifiedTime(script.file),
+                                        script.sandbox ? target : doc.defaultView);
+
                                 script.isRunning = true;
-                            } else { // For ES6 Module
-                                // ChromeUtils.importESModule(scriptURI);
-                                ChromeUtils.compileScript(
-                                    `data:,"use strict";
-                                    import("${script.url}")
-                                    .catch(e=>{ throw new Error(e.message,"${script.filename}", e.lineNumber) })`
-                                ).then(r => {
-                                    if (r) {
-                                        r.executeInGlobal(/*global*/ target, { reportExceptions: true });
-                                        script.isRunning = true;
+                                if (script.startup) {
+                                    if (script.sandbox) {
+                                        Cu.evalInSandbox(script.startup, target);
+                                    } else {
+                                        eval(script.startup);
                                     }
-                                }).catch(ex => {
-                                    this.error(`@ ${script.filename}: script couldn't be compiled because:`, ex);
-                                })
+                                }
+                            } catch (ex) {
+                                this.error(script.filename, ex);
                             }
-                        } catch (ex) {
-                            this.debug(ex);
+                        } else {
+                            ChromeUtils.compileScript(script.chromedir + "?" + this.getLastModifiedTime(script.file)).then((r) => {
+                                if (r) {
+                                    r.executeInGlobal(/*global*/ script.sandbox ? target : doc.defaultView, { reportExceptions: true });
+                                    script.isRunning = true;
+                                }
+                            }).catch((ex) => {
+                                this.error(`@ ${script.filename}: script couldn't be compiled because:`, ex);
+                            })
                         }
                     } else {
-                        let es = script.isESM ? `data:,"use strict";import("${script.url}").catch(console.error)` : script.url + "?" + this.getLastModifiedTime(script.file);
-                        ChromeUtils.compileScript(es).then((r) => {
-                            if (r) {
-                                r.executeInGlobal(/*global*/ script.sandbox ? target : doc.defaultView, { reportExceptions: true });
-                                script.isRunning = true;
+                        if (script.isActor) {
+                            if (!script.actorParams) {
+                                script.actorParams = {};
                             }
-                        }).catch((ex) => {
-                            this.error(`@ ${script.filename}: script couldn't be compiled because:`, ex);
-                        })
+                            script.actorParams.parent = {
+                                esModuleURI: script.chromedir
+                            };
+                            script.actorParams.child = {
+                                esModuleURI: script.chromedir,
+                                events: {}
+                            };
+                            for (let [key, value] of Object.entries(script.actorParams.events)) {
+                                script.actorParams.child.events[key] = value;
+                            }
+                            delete script.actorParams.events;
+                            ChromeUtils.registerWindowActor(script.actor, script.actorParams);
+                            script.isRunning = true;
+                        } else {
+                            try {
+                                let moduleName = script.filename.replace(/\.(sys|uc)\.mjs$/, "");
+                                let exportedModule = ChromeUtils.importESModule(script.chromedir + "?" + this.getLastModifiedTime(script.file))[moduleName];
+                                if (exportedModule) {
+                                    let handler = exportedModule?.onWindowLoad;
+                                    if (typeof handler === "function") handler.call(exportedModule, win);
+                                    script.isRunning = true;
+                                    continue;
+                                }
+                            } catch (ex) {
+                                this.error(`@ ${script.file}: module couldn't be load because:`, ex);
+                            }
+                            ChromeUtils.compileScript(`data:,"use strict";import("${script.chromedir}").catch(console.error)`).then((r) => {
+                                if (r) {
+                                    r.executeInGlobal(/*global*/ script.sandbox ? target : doc.defaultView, { reportExceptions: true });
+                                    script.isRunning = true;
+                                }
+                            }).catch((ex) => {
+                                this.error(`@ ${script.filename}: script couldn't be compiled because:`, ex);
+                            })
+
+                        }
                     }
                 }
-            }
-
-            function resolveChromeURL (fileUrl) {
-                return fileUrl.replace("file:///" + PathUtils.profileDir.replace(/\\/g, '/') + "/chrome", "chrome://userchrome/content")
             }
         },
 
