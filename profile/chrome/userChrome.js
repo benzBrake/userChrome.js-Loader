@@ -1,4 +1,4 @@
-/* :::::::: Sub-Script/Overlay Loader v3.0.79mod no bind version ::::::::::::::: */
+/* :::::::: Sub-Script/Overlay Loader v3.0.83mod no bind version ::::::::::::::: */
 
 // automatically includes all files ending in .uc.xul and .uc.js from the profile's chrome folder
 
@@ -14,6 +14,8 @@
 // 4.Support window.userChrome_js.loadOverlay(overlay [,observer]) <--- not work in recent Firefox
 // Modified by Alice0775
 //
+// @version       2025/05/11 fix extended property flag(enumerable)
+// @version       2025/04/07 default disabled sandbox
 // @version       2025/04/02 read meta @sandbox
 // @version       2025/04/02 fix loadscript uc.js into sandbox
 // @version       2025/01/05 fix error handler
@@ -85,7 +87,6 @@
 
 (function () {
     "use strict";
-    const { classes: Cc, interfaces: Ci, results: Cr, utils: Cu } = Components;
     var { AppConstants } = AppConstants || ChromeUtils.importESModule(
         "resource://gre/modules/AppConstants.sys.mjs"
     );
@@ -165,6 +166,8 @@
 
         //スクリプトデータを作成
         getScripts: function () {
+            const Cc = Components.classes;
+            const Ci = Components.interfaces;
             const fph = Services.io.getProtocolHandler("file").QueryInterface(Ci.nsIFileProtocolHandler);
             const ds = Services.dirsvc;
             var Start = new Date().getTime();
@@ -225,11 +228,12 @@
                             try {
                                 var script = getScriptData(readFile(file, true), file);
                             } catch (e) {
-                                globalThis.console.error(e);
+                                this.debug(e);
                             }
                             script.dir = dir;
                             if (/\.uc\.js$|\.mjs$/i.test(script.filename)) {
                                 script.ucjs = checkUCJS(script.file.path);
+                                script.LastModifiedTime = this.getLastModifiedTime(script.file);
                                 s.push(script);
                             } else {
                                 script.xul = '<?xul-overlay href=\"' + script.url + '\"?>\n';
@@ -277,7 +281,7 @@
                 const asyncMatch = extractSingleMeta(header, /\/\/ @async\b(.+)\s*/i);
                 const sandboxMatch = extractSingleMeta(header, /\/\/ @sandbox\b(.+)\s*/i);
                 const asyncFlag = asyncMatch === "true";
-                const sandboxFlag = sandboxMatch !== "false";
+                const sandboxFlag = sandboxMatch === "true";
                 const url = fph.getURLSpecFromActualFile(aFile);
                 const actor = extractSingleMeta(header, /\/\/ @actor\b(.+)\s*/i);
                 const s = {
@@ -602,8 +606,11 @@
             /* toSource() is not available in sandbox */
             Cu.evalInSandbox(`
                   Function.prototype.toSource = window.Function.prototype.toSource;
+            Object.defineProperty(Function.prototype, "toSource", {enumerable : false})
                   Object.prototype.toSource = window.Object.prototype.toSource;
+            Object.defineProperty(Object.prototype, "toSource", {enumerable : false})
                   Array.prototype.toSource = window.Array.prototype.toSource;
+            Object.defineProperty(Array.prototype, "toSource", {enumerable : false})
               `, target);
             win.addEventListener("unload", () => {
                 setTimeout(() => {
