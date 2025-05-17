@@ -15,14 +15,6 @@ let {
   utils: Cu
 } = Components;
 
-if (typeof globalThis === "object" && typeof globalThis.Services == "undefined") {
-  const Services = Cu.import("resource://gre/modules/Services.jsm").Services;
-  globalThis.Services = Services;
-}
-
-// old version of firefox don't have this pref
-const useESM = Services.prefs.getPrefType("accessibility.ARIAElementReflection.enabled") !== Services.prefs.PREF_INVALID;
-
 try {
   let cmanifest = Cc['@mozilla.org/file/directory_service;1'].getService(Ci.nsIProperties).get('UChrm', Ci.nsIFile);
   cmanifest.append('utils');
@@ -30,13 +22,9 @@ try {
 
   if (cmanifest.exists()) {
     Cm.QueryInterface(Ci.nsIComponentRegistrar).autoRegister(cmanifest);
-    Services.scriptloader.loadSubScript('chrome://userchromejs/content/RemoveSignatureCheck.js');
-    useESM ?
-      ChromeUtils.importESModule("chrome://userchromejs/content/BootstrapLoader.sys.mjs") :
-      Cu.import('chrome://userchromejs/content/BootstrapLoader.jsm');
+    Services.scriptloader.loadSubScript('chrome://userchromejs/content/utils/RemoveSignatureCheck.js');
+    ChromeUtils.importESModule("chrome://userchromejs/content/utils/BootstrapLoader.sys.mjs");
   }
 
-  useESM ?
-    ChromeUtils.importESModule("chrome://userchromejs/content/boot.sys.mjs") :
-    Cu.import('chrome://userchromejs/content/boot.jsm');
+  ChromeUtils.importESModule("chrome://userchromejs/content/utils/boot.sys.mjs")
 } catch (ex) { Cu.reportError(ex); }

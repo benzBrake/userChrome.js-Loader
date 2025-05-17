@@ -2,7 +2,7 @@
 'use strict';
 
 const { Services } = globalThis;
-const { xPref } = ChromeUtils.importESModule("chrome://userchromejs/content/xPref.sys.mjs");
+const { xPref } = ChromeUtils.importESModule("chrome://userchromejs/content/utils/xPref.sys.mjs");
 const { AppConstants } = ChromeUtils.importESModule('resource://gre/modules/AppConstants.sys.mjs');
 const { Management } = ChromeUtils.importESModule('resource://gre/modules/Extension.sys.mjs');
 
@@ -19,11 +19,11 @@ const _uc = {
     chromedir: Services.dirsvc.get('UChrm', Ci.nsIFile),
     scriptsDir: '',
 
-    get isFaked() {
+    get isFaked () {
         return true;
     },
 
-    get isESM() {
+    get isESM () {
         return true;
     },
 
@@ -61,7 +61,7 @@ const _uc = {
 }
 
 try {
-    function UserChrome_js() {
+    function UserChrome_js () {
         Services.obs.addObserver(this, 'domwindowopened', false);
     };
 
@@ -104,11 +104,15 @@ try {
                     return;
                 }
 
+                Cu.exportFunction((key, func, context) => {
+                    this.setUnloadMap(key, func, context);
+                }, window, { defineAs: "setUnloadMap" });
+
                 window.xPref = xPref;
 
                 window.UC = UC;
                 window._uc = _uc;
-                
+
                 if (window._gBrowser) // bug 1443849
                     window.gBrowser = window._gBrowser;
 

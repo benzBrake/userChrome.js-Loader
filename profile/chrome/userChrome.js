@@ -596,7 +596,7 @@
 
             // 兼容 ucf setUnloadMap
             Cu.evalInSandbox(`
-                const { initUloadMap, setUnloadMap } = ChromeUtils.importESModule("chrome://userchromejs/content/ucf.sys.mjs")
+                const { initUloadMap, setUnloadMap } = ChromeUtils.importESModule("chrome://userchromejs/content/utils/ucf.sys.mjs")
                 initUloadMap(window);
                 globalThis.setUnloadMap = setUnloadMap;
             `, target);
@@ -769,7 +769,7 @@
                     "userchrome",
                     "app",
                     locales,
-                    "chrome://userchrome/content/locales/{locale}/"
+                    "chrome://userchromejs/content/locales/{locale}/"
                 ),
             ]);
 

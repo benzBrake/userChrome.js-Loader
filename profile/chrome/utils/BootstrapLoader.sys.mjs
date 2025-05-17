@@ -10,7 +10,7 @@ const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
   Blocklist: 'resource://gre/modules/Blocklist.sys.mjs',
   ConsoleAPI: 'resource://gre/modules/Console.sys.mjs',
-  InstallRDF: 'chrome://userchromejs/content/RDFManifestConverter.sys.mjs',
+  InstallRDF: 'chrome://userchromejs/content/utils/RDFManifestConverter.sys.mjs',
 });
 
 Services.obs.addObserver(doc => {
