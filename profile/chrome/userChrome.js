@@ -286,6 +286,7 @@
                 const sandboxFlag = sandboxMatch === "true";
                 const url = fph.getURLSpecFromActualFile(aFile);
                 const actor = extractSingleMeta(header, /\/\/ @actor\b(.+)\s*/i);
+                const exportedModule = extractSingleMeta(header, /\/\/ @export\b(.+)\s*/i);
                 const s = {
                     filename: aFile.leafName,
                     file: aFile,
@@ -296,6 +297,7 @@
                     description,
                     async: asyncFlag,
                     sandbox: sandboxFlag,
+                    exportedModule: exportedModule.trim(),
                     icon: extractSingleMeta(header, /\/\/ @icon\s+(.+)\s*$/im),
                     regex: new RegExp(`^${exclude}(${include.join("|") || ".*"})$`, "i"),
                     onlyonce: /\/\/ @onlyonce\b/.test(header),
@@ -713,7 +715,7 @@
                             script.isRunning = true;
                         } else {
                             try {
-                                let moduleName = script.filename.replace(/\.(sys|uc)\.mjs$/, "");
+                                let moduleName = script.exportedModule ? script.exportedModule : script.filename.replace(/\.(sys|uc)\.mjs$/, "");
                                 let exportedModule = ChromeUtils.importESModule(script.chromedir + "?" + this.getLastModifiedTime(script.file))[moduleName];
                                 if (exportedModule) {
                                     let handler = exportedModule?.onWindowLoad;
