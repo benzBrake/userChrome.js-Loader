@@ -3,6 +3,7 @@ export { initUloadMap, setUnloadMap }
 const handler = {
 
 }
+
 function initUloadMap (win) {
     handler.window = win
     handler.unloadMap = new Map();

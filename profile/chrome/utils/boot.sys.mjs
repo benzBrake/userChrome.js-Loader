@@ -2,8 +2,6 @@
 'use strict';
 
 const { Services } = globalThis;
-const { xPref } = ChromeUtils.importESModule("chrome://userchromejs/content/utils/xPref.sys.mjs");
-const { AppConstants } = ChromeUtils.importESModule('resource://gre/modules/AppConstants.sys.mjs');
 const { Management } = ChromeUtils.importESModule('resource://gre/modules/Extension.sys.mjs');
 
 const UC = {
@@ -11,57 +9,8 @@ const UC = {
     sidebar: new Map()
 }
 
-const _uc = {
-    BROWSERCHROME: AppConstants.MOZ_APP_NAME == 'thunderbird' ? 'chrome://messenger/content/messenger.xhtml' : 'chrome://browser/content/browser.xhtml',
-    BROWSERTYPE: AppConstants.MOZ_APP_NAME == 'thunderbird' ? 'mail:3pane' : 'navigator:browser',
-    BROWSERNAME: AppConstants.MOZ_APP_NAME.charAt(0).toUpperCase() + AppConstants.MOZ_APP_NAME.slice(1),
-    sss: Cc["@mozilla.org/content/style-sheet-service;1"].getService(Ci.nsIStyleSheetService),
-    chromedir: Services.dirsvc.get('UChrm', Ci.nsIFile),
-    scriptsDir: '',
-
-    get isFaked () {
-        return true;
-    },
-
-    get isESM () {
-        return true;
-    },
-
-    windows: function (fun, onlyBrowsers = true) {
-        let windows = Services.wm.getEnumerator(onlyBrowsers ? this.BROWSERTYPE : null);
-        while (windows.hasMoreElements()) {
-            let win = windows.getNext();
-            if (!win._uc)
-                continue;
-            if (!onlyBrowsers) {
-                let frames = win.docShell.getAllDocShellsInSubtree(Ci.nsIDocShellTreeItem.typeAll, Ci.nsIDocShell.ENUMERATE_FORWARDS);
-                let res = frames.some(frame => {
-                    let fWin = frame.domWindow;
-                    let { document, location } = fWin;
-                    if (fun(document, fWin, location))
-                        return true;
-                });
-                if (res)
-                    break;
-            } else {
-                let { document, location } = win;
-                if (fun(document, win, location))
-                    break;
-            }
-        }
-    },
-
-    createElement: function (doc, tag, atts, XUL = true) {
-        let el = XUL ? doc.createXULElement(tag) : doc.createElement(tag);
-        for (let att in atts) {
-            el.setAttribute(att, atts[att]);
-        }
-        return el
-    }
-}
-
 try {
-    function UserChrome_js () {
+    function UserChrome_js() {
         Services.obs.addObserver(this, 'domwindowopened', false);
     };
 
@@ -108,10 +57,15 @@ try {
                     this.setUnloadMap(key, func, context);
                 }, window, { defineAs: "setUnloadMap" });
 
-                window.xPref = xPref;
+                ChromeUtils.defineLazyGetter(window, "xPref", () =>
+                    ChromeUtils.importESModule("chrome://userchromejs/content/utils/xPref.sys.mjs").xPref
+                );
 
                 window.UC = UC;
-                window._uc = _uc;
+
+                ChromeUtils.defineLazyGetter(window, "_uc", () =>
+                    ChromeUtils.importESModule("chrome://userchromejs/content/utils/_uc.sys.mjs")._uc
+                );
 
                 if (window._gBrowser) // bug 1443849
                     window.gBrowser = window._gBrowser;
