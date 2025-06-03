@@ -149,7 +149,7 @@
         EXCLUDE_CHROMEHIDDEN: EXCLUDE_CHROMEHIDDEN,
         REPLACECACHE: REPLACECACHE,
 
-        get hackVersion () {
+        get hackVersion() {
             delete this.hackVersion;
             return this.hackVersion = "0.8";
             //拡張のバージョン違いを吸収
@@ -254,18 +254,18 @@
             this.debug('Parsing getScripts: ' + ((new Date()).getTime() - Start) + 'msec');
 
             //nameを比較する関数
-            function cmp_name (a, b) {
+            function cmp_name(a, b) {
                 if (a.toLowerCase() == b.toLowerCase())
                     return a < b ? -1 : 1;
                 else
                     return a.toLowerCase() < b.toLowerCase() ? -1 : 1;
             }
-            function cmp_fname (a, b) {
+            function cmp_fname(a, b) {
                 return cmp_name(a.filename, b.filename);
             }
 
             //UCJSローダ必要か
-            function checkUCJS (aPath) {
+            function checkUCJS(aPath) {
                 for (var i = 0, len = that.UCJS.length; i < len; i++) {
                     if (aPath.indexOf(that.UCJS[i], 0) > -1)
                         return true;
@@ -274,7 +274,7 @@
             }
 
             //メタデータ収集
-            function getScriptData (aContent, aFile) {
+            function getScriptData(aContent, aFile) {
                 const header = extractHeader(aContent);
                 const { include, exclude } = buildRegexRules(header, mainWindowURL, findNextRe);
                 const { description, fullDescription } = extractDescription(header, aFile);
@@ -348,16 +348,16 @@
 
                 return s;
 
-                function extractHeader (content) {
+                function extractHeader(content) {
                     return (content.match(/^\/\/ ==UserScript==[ \t]*\n(?:.*\n)*?\/\/ ==\/UserScript==[ \t]*\n/m) || [""])[0];
                 }
 
-                function extractSingleMeta (header, pattern) {
+                function extractSingleMeta(header, pattern) {
                     const match = header.match(pattern);
                     return match?.[1]?.trim() || "";
                 }
 
-                function buildRegexRules (header, mainWindowURL, findNextRe) {
+                function buildRegexRules(header, mainWindowURL, findNextRe) {
                     const rex = { include: [], exclude: [] };
                     let match;
                     while ((match = findNextRe.exec(header))) {
@@ -375,7 +375,7 @@
                     return { include: rex.include, exclude };
                 };
 
-                function extractDescription (header, file) {
+                function extractDescription(header, file) {
                     const hasLongDescription = /^\/\/\ @long-description/im.test(header);
                     let description = hasLongDescription
                         ? header.match(/\/\/ @description\s+.*?\/\*\s*(.+?)\s*\*\//is)?.[1]
@@ -388,14 +388,14 @@
                     return { description, fullDescription };
                 }
 
-                function getFirstLine (text) {
+                function getFirstLine(text) {
                     const lines = text.split(/\r\n|\r|\n/);
                     return lines[0] || text;
                 }
             }
 
             //スクリプトファイル読み込み
-            function readFile (aFile, metaOnly) {
+            function readFile(aFile, metaOnly) {
                 if (typeof metaOnly == 'undefined')
                     metaOnly = false;
                 var stream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(Ci.nsIFileInputStream);
@@ -415,7 +415,7 @@
             }
 
             //バイナリ読み込み
-            function readBinary (aFile) {
+            function readBinary(aFile) {
                 var istream = Components.classes["@mozilla.org/network/file-input-stream;1"]
                     .createInstance(Components.interfaces.nsIFileInputStream);
                 istream.init(aFile, -1, -1, false);
@@ -427,7 +427,7 @@
             }
 
             //バイナリ書き込み
-            function writeFile (aFile, aData) {
+            function writeFile(aFile, aData) {
                 var foStream = Components.classes["@mozilla.org/network/file-output-stream;1"]
                     .createInstance(Components.interfaces.nsIFileOutputStream);
                 // ファイル追記の際は、0x02 | 0x10 を使う
@@ -438,7 +438,7 @@
             }
 
             //prefを読み込み
-            function getPref (aPrefString, aPrefType, aDefault) {
+            function getPref(aPrefString, aPrefType, aDefault) {
                 var xpPref = Components.classes['@mozilla.org/preferences-service;1']
                     .getService(Components.interfaces.nsIPrefService);
                 try {
@@ -459,7 +459,7 @@
             }
 
             //pref文字列変換
-            function restoreState (a) {
+            function restoreState(a) {
                 try {
                     var sd = [];
                     for (var i = 0, max = a.length; i < max; ++i) sd[unescape(a[i])] = true;
@@ -567,7 +567,7 @@
             var script, aScript, url;
             const Cc = Components.classes;
             const Ci = Components.interfaces;
-            const maxJSVersion = (function getMaxJSVersion () {
+            const maxJSVersion = (function getMaxJSVersion() {
                 var appInfo = Components
                     .classes["@mozilla.org/xre/app-info;1"]
                     .getService(Components.interfaces.nsIXULAppInfo);
@@ -661,18 +661,19 @@
                     }
                     continue;
                     */
-
+                    let targetWin = script.sandbox ? target : doc.defaultView;
                     if (!script.isModule) {
+
                         if (!script.async) {
                             try {
                                 if (script.charset)
                                     Services.scriptloader.loadSubScript(
                                         script.chromedir + "?" + this.getLastModifiedTime(script.file),
-                                        script.sandbox ? target : doc.defaultView, script.charset);
+                                        script.onlyonce ? { window: targetWin } : targetWin, script.charset);
                                 else
                                     Services.scriptloader.loadSubScript(
                                         script.chromedir + "?" + this.getLastModifiedTime(script.file),
-                                        script.sandbox ? target : doc.defaultView);
+                                        script.onlyonce ? { window: targetWin } : targetWin);
 
                                 script.isRunning = true;
                                 if (script.startup) {
@@ -688,7 +689,7 @@
                         } else {
                             ChromeUtils.compileScript(script.chromedir + "?" + this.getLastModifiedTime(script.file)).then((r) => {
                                 if (r) {
-                                    r.executeInGlobal(/*global*/ script.sandbox ? target : doc.defaultView, { reportExceptions: true });
+                                    r.executeInGlobal(/*global*/ script.onlyonce ? { window: targetWin } : targetWin, { reportExceptions: true });
                                     script.isRunning = true;
                                 }
                             }).catch((ex) => {
@@ -728,7 +729,7 @@
                             }
                             ChromeUtils.compileScript(`data:,"use strict";import("${script.chromedir}").catch(console.error)`).then((r) => {
                                 if (r) {
-                                    r.executeInGlobal(/*global*/ script.sandbox ? target : doc.defaultView, { reportExceptions: true });
+                                    r.executeInGlobal(/*global*/ script.onlyonce ? { window: targetWin } : targetWin, { reportExceptions: true });
                                     script.isRunning = true;
                                 }
                             }).catch((ex) => {
