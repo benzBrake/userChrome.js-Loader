@@ -626,10 +626,10 @@
                         || !!this.dirDisable[script.dir]
                         || !!this.scriptDisable[script.filename])) continue;
                 if (!script.isActor && !script.regex.test(dochref)) continue;
-
+                let targetWin = script.sandbox ? target : doc.defaultView;
                 if (script.onlyonce && script.isRunning) {
                     if (script.startup) {
-                        eval(script.startup);
+                        Services.scriptloader.loadSubScript("data:application/javascript;," + encodeURIComponent(script.startup));
                     }
                     continue;
                 }
@@ -661,9 +661,7 @@
                     }
                     continue;
                     */
-                    let targetWin = script.sandbox ? target : doc.defaultView;
                     if (!script.isModule) {
-
                         if (!script.async) {
                             try {
                                 if (script.charset)
@@ -677,11 +675,7 @@
 
                                 script.isRunning = true;
                                 if (script.startup) {
-                                    if (script.sandbox) {
-                                        Cu.evalInSandbox(script.startup, target);
-                                    } else {
-                                        eval(script.startup);
-                                    }
+                                    Services.scriptloader.loadSubScript("data:application/javascript;," + encodeURIComponent(script.startup));
                                 }
                             } catch (ex) {
                                 this.error(script.filename, ex);
@@ -697,7 +691,7 @@
                             })
                         }
                     } else {
-                        if (script.isActor) {
+                        if (script.isActor && !script.isRunning) {
                             if (!script.actorParams) {
                                 script.actorParams = {};
                             }
