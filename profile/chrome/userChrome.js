@@ -91,6 +91,10 @@
     var { AppConstants } = AppConstants || ChromeUtils.importESModule(
         "resource://gre/modules/AppConstants.sys.mjs"
     );
+    const lazy = {}
+    ChromeUtils.defineLazyGetter(lazy, "console", () => console.createInstance({
+        prefix: "userChrome.js"
+    }));
     // -- config --
     const EXCLUDE_CHROMEHIDDEN = false; //chromehiddenなwindow(popup等)ではロード: しないtrue, する[false]
     const USE_0_63_FOLDER = false; //0.63のフォルダ規則を使う[true], 使わないfalse
@@ -149,7 +153,7 @@
         EXCLUDE_CHROMEHIDDEN: EXCLUDE_CHROMEHIDDEN,
         REPLACECACHE: REPLACECACHE,
 
-        get hackVersion() {
+        get hackVersion () {
             delete this.hackVersion;
             return this.hackVersion = "0.8";
             //拡張のバージョン違いを吸収
@@ -254,18 +258,18 @@
             this.debug('Parsing getScripts: ' + ((new Date()).getTime() - Start) + 'msec');
 
             //nameを比較する関数
-            function cmp_name(a, b) {
+            function cmp_name (a, b) {
                 if (a.toLowerCase() == b.toLowerCase())
                     return a < b ? -1 : 1;
                 else
                     return a.toLowerCase() < b.toLowerCase() ? -1 : 1;
             }
-            function cmp_fname(a, b) {
+            function cmp_fname (a, b) {
                 return cmp_name(a.filename, b.filename);
             }
 
             //UCJSローダ必要か
-            function checkUCJS(aPath) {
+            function checkUCJS (aPath) {
                 for (var i = 0, len = that.UCJS.length; i < len; i++) {
                     if (aPath.indexOf(that.UCJS[i], 0) > -1)
                         return true;
@@ -274,7 +278,7 @@
             }
 
             //メタデータ収集
-            function getScriptData(aContent, aFile) {
+            function getScriptData (aContent, aFile) {
                 const header = extractHeader(aContent);
                 const { include, exclude } = buildRegexRules(header, mainWindowURL, findNextRe);
                 const { description, fullDescription } = extractDescription(header, aFile);
@@ -348,16 +352,16 @@
 
                 return s;
 
-                function extractHeader(content) {
+                function extractHeader (content) {
                     return (content.match(/^\/\/ ==UserScript==[ \t]*\n(?:.*\n)*?\/\/ ==\/UserScript==[ \t]*\n/m) || [""])[0];
                 }
 
-                function extractSingleMeta(header, pattern) {
+                function extractSingleMeta (header, pattern) {
                     const match = header.match(pattern);
                     return match?.[1]?.trim() || "";
                 }
 
-                function buildRegexRules(header, mainWindowURL, findNextRe) {
+                function buildRegexRules (header, mainWindowURL, findNextRe) {
                     const rex = { include: [], exclude: [] };
                     let match;
                     while ((match = findNextRe.exec(header))) {
@@ -375,7 +379,7 @@
                     return { include: rex.include, exclude };
                 };
 
-                function extractDescription(header, file) {
+                function extractDescription (header, file) {
                     const hasLongDescription = /^\/\/\ @long-description/im.test(header);
                     let description = hasLongDescription
                         ? header.match(/\/\/ @description\s+.*?\/\*\s*(.+?)\s*\*\//is)?.[1]
@@ -388,14 +392,14 @@
                     return { description, fullDescription };
                 }
 
-                function getFirstLine(text) {
+                function getFirstLine (text) {
                     const lines = text.split(/\r\n|\r|\n/);
                     return lines[0] || text;
                 }
             }
 
             //スクリプトファイル読み込み
-            function readFile(aFile, metaOnly) {
+            function readFile (aFile, metaOnly) {
                 if (typeof metaOnly == 'undefined')
                     metaOnly = false;
                 var stream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(Ci.nsIFileInputStream);
@@ -415,7 +419,7 @@
             }
 
             //バイナリ読み込み
-            function readBinary(aFile) {
+            function readBinary (aFile) {
                 var istream = Components.classes["@mozilla.org/network/file-input-stream;1"]
                     .createInstance(Components.interfaces.nsIFileInputStream);
                 istream.init(aFile, -1, -1, false);
@@ -427,7 +431,7 @@
             }
 
             //バイナリ書き込み
-            function writeFile(aFile, aData) {
+            function writeFile (aFile, aData) {
                 var foStream = Components.classes["@mozilla.org/network/file-output-stream;1"]
                     .createInstance(Components.interfaces.nsIFileOutputStream);
                 // ファイル追記の際は、0x02 | 0x10 を使う
@@ -438,7 +442,7 @@
             }
 
             //prefを読み込み
-            function getPref(aPrefString, aPrefType, aDefault) {
+            function getPref (aPrefString, aPrefType, aDefault) {
                 var xpPref = Components.classes['@mozilla.org/preferences-service;1']
                     .getService(Components.interfaces.nsIPrefService);
                 try {
@@ -459,7 +463,7 @@
             }
 
             //pref文字列変換
-            function restoreState(a) {
+            function restoreState (a) {
                 try {
                     var sd = [];
                     for (var i = 0, max = a.length; i < max; ++i) sd[unescape(a[i])] = true;
@@ -567,7 +571,7 @@
             var script, aScript, url;
             const Cc = Components.classes;
             const Ci = Components.interfaces;
-            const maxJSVersion = (function getMaxJSVersion() {
+            const maxJSVersion = (function getMaxJSVersion () {
                 var appInfo = Components
                     .classes["@mozilla.org/xre/app-info;1"]
                     .getService(Components.interfaces.nsIXULAppInfo);
@@ -736,21 +740,8 @@
             }
         },
 
-        debug: function (aMsg) {
-            Components.classes["@mozilla.org/consoleservice;1"]
-                .getService(Components.interfaces.nsIConsoleService)
-                .logStringMessage(aMsg);
-        },
-
-        error: function (aMsg, err) {
-            const CONSOLE_SERVICE = Components.classes['@mozilla.org/consoleservice;1']
-                .getService(Components.interfaces.nsIConsoleService);
-            var error = Components.classes['@mozilla.org/scripterror;1']
-                .createInstance(Components.interfaces.nsIScriptError);
-            if (typeof (err) == 'object') error.init(aMsg + '\n' + err.name + ' : ' + err.message, err.fileName || null, null, err.lineNumber, null, 2, err.name);
-            else error.init(aMsg + '\n' + err + '\n', null, null, null, null, 2, null);
-            CONSOLE_SERVICE.logMessage(error);
-        }
+        debug: (...args) => lazy.console.log(...args),
+        error: (...args) => lazy.console.error(...args),
     };
 
     const f = Services.dirsvc.get('UChrm', Ci.nsIFile);
