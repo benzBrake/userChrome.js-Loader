@@ -288,6 +288,8 @@
                 const sandboxMatch = extractSingleMeta(header, /\/\/ @sandbox\b(.+)\s*/i);
                 const asyncFlag = asyncMatch === "true";
                 const sandboxFlag = sandboxMatch === "true";
+                const skipMatch = extractSingleMeta(header, /\/\/ @skip\b(.+)\s*/i);
+                const skipFlag = skipMatch === "true";
                 const url = fph.getURLSpecFromActualFile(aFile);
                 const actor = extractSingleMeta(header, /\/\/ @actor\b(.+)\s*/i);
                 const exportedModule = extractSingleMeta(header, /\/\/ @export\b(.+)\s*/i);
@@ -301,6 +303,7 @@
                     description,
                     async: asyncFlag,
                     sandbox: sandboxFlag,
+                    skip: skipFlag,
                     exportedModule: exportedModule.trim(),
                     icon: extractSingleMeta(header, /\/\/ @icon\s+(.+)\s*$/im),
                     regex: new RegExp(`^${exclude}(${include.join("|") || ".*"})$`, "i"),
@@ -629,6 +632,7 @@
                     && (!!this.dirDisable['*']
                         || !!this.dirDisable[script.dir]
                         || !!this.scriptDisable[script.filename])) continue;
+                if (script.skip) continue;
                 if (!script.isActor && !script.regex.test(dochref)) continue;
                 let targetWin = script.sandbox ? target : doc.defaultView;
                 if (script.onlyonce && script.isRunning) {
@@ -725,15 +729,17 @@
                             } catch (ex) {
                                 this.error(`@ ${script.file}: module couldn't be load because:`, ex);
                             }
-                            ChromeUtils.compileScript(`data:,"use strict";import("${script.chromedir}").catch(console.error)`).then((r) => {
-                                if (r) {
-                                    r.executeInGlobal(/*global*/ script.onlyonce ? { window: targetWin } : targetWin, { reportExceptions: true });
-                                    script.isRunning = true;
-                                }
-                            }).catch((ex) => {
-                                this.error(`@ ${script.filename}: script couldn't be compiled because:`, ex);
-                            })
-
+                            if (/\.uc\.mjs$/.test(script.filename)) {
+                                // only for .uc.mjs
+                                ChromeUtils.compileScript(`data:,"use strict";import("${script.chromedir}").catch(console.error)`).then((r) => {
+                                    if (r) {
+                                        r.executeInGlobal(/*global*/ script.onlyonce ? { window: targetWin } : targetWin, { reportExceptions: true });
+                                        script.isRunning = true;
+                                    }
+                                }).catch((ex) => {
+                                    this.error(`@ ${script.filename}: script couldn't be compiled because:`, ex);
+                                })
+                            }
                         }
                     }
                 }
