@@ -8,8 +8,8 @@ try {
   cmanifest.append('chrome.manifest');
   Components.manager.QueryInterface(Ci.nsIComponentRegistrar).autoRegister(cmanifest);
 
-  Services.scriptloader.loadSubScript('chrome://userchromejs/content/BootstrapLoader.js');
-  Services.scriptloader.loadSubScript('chrome://userchromejs/content/RemoveSignatureCheck.js');
+  Services.scriptloader.loadSubScript('chrome://userchromejs/content/utils/BootstrapLoader.js');
+  Services.scriptloader.loadSubScript('chrome://userchromejs/content/utils/RemoveSignatureCheck.js');
 } catch (ex) { };
 
 try {

@@ -766,7 +766,7 @@
                     "userchrome",
                     "app",
                     locales,
-                    "chrome://userchromejs/content/locales/{locale}/"
+                    "chrome://userchromejs/content/utils/locales/{locale}/"
                 ),
             ]);
 

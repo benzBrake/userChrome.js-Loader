@@ -9,8 +9,8 @@ const Services = globalThis.Services;
 ChromeUtils.defineESModuleGetters(this, {
   Blocklist: 'resource://gre/modules/Blocklist.sys.mjs',
   ConsoleAPI: 'resource://gre/modules/Console.sys.mjs',
-  InstallRDF: 'chrome://userchromejs/content/RDFManifestConverter.sys.mjs',
-  ChromeManifest: 'chrome://userchromejs/content/ChromeManifest.sys.mjs',
+  InstallRDF: 'chrome://userchromejs/content/utils/RDFManifestConverter.sys.mjs',
+  ChromeManifest: 'chrome://userchromejs/content/utils/ChromeManifest.sys.mjs',
 });
 
 Services.obs.addObserver(doc => {
