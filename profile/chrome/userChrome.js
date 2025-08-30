@@ -313,7 +313,7 @@
                     icon: extractSingleMeta(header, /\/\/ @icon\s+(.+)\s*$/im),
                     regex: new RegExp(`^${exclude}(${include.join("|") || ".*"})$`, "i"),
                     onlyonce: /\/\/ @onlyonce\b/.test(header),
-                    homepageURL: extractSingleMeta(header, /\/\/ @homepage(URL)?\s+(.+)\s*$/im),
+                    homepageURL: extractSingleMeta(header, /\/\/ @homepage(URL)?\s+(.+)\s*$/im, 2),
                     downloadURL: extractSingleMeta(header, /\/\/ @downloadURL\s+(.+)\s*$/im),
                     optionsURL: extractSingleMeta(header, /\/\/ @optionsURL\s+(.+)\s*$/im),
                     startup: extractSingleMeta(header, /\/\/ @startup\s+(.+)\s*$/im),
@@ -364,9 +364,9 @@
                     return (content.match(/^\/\/ ==UserScript==[ \t]*\n(?:.*\n)*?\/\/ ==\/UserScript==[ \t]*\n/m) || [""])[0];
                 }
 
-                function extractSingleMeta (header, pattern) {
+                function extractSingleMeta (header, pattern, matchedGroup = 1) {
                     const match = header.match(pattern);
-                    return match?.[1]?.trim() || "";
+                    return match?.[matchedGroup]?.trim() || "";
                 }
 
                 function buildRegexRules (header, mainWindowURL, findNextRe) {
