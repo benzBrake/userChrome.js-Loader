@@ -288,7 +288,7 @@
             function getScriptData (aContent, aFile) {
                 const header = extractHeader(aContent);
                 const { include, exclude } = buildRegexRules(header, mainWindowURL, findNextRe);
-                const { description, fullDescription } = extractDescription(header, aFile);
+                const { description, fullDescription, longDescription } = extractDescription(header, aFile);
 
                 const charset = extractSingleMeta(header, /\/\/ @charset\b(.+)\s*/i);
                 const asyncMatch = extractSingleMeta(header, /\/\/ @async\b(.+)\s*/i);
@@ -300,6 +300,8 @@
                 const url = fph.getURLSpecFromActualFile(aFile);
                 const actor = extractSingleMeta(header, /\/\/ @actor\b(.+)\s*/i);
                 const exportedModule = extractSingleMeta(header, /\/\/ @export\b(.+)\s*/i);
+                const notes = extractMultiMeta(header, /\/\/ @note\s+(.+)\s*$/gim);
+                const icon = extractSingleMeta(header, /\/\/ @icon\s+(.+)\s*$/im);
                 const s = {
                     filename: aFile.leafName,
                     file: aFile,
@@ -311,7 +313,10 @@
                     sandbox: sandboxFlag,
                     skip: skipFlag,
                     exportedModule: exportedModule.trim(),
-                    icon: extractSingleMeta(header, /\/\/ @icon\s+(.+)\s*$/im),
+                    icon,
+                    iconURL: icon,
+                    note: notes.join("\n"),
+                    notes,
                     regex: new RegExp(`^${exclude}(${include.join("|") || ".*"})$`, "i"),
                     onlyonce: /\/\/ @onlyonce\b/.test(header),
                     homepageURL: extractSingleMeta(header, /\/\/ @homepage(URL)?\s+(.+)\s*$/im, 2),
@@ -319,6 +324,7 @@
                     optionsURL: extractSingleMeta(header, /\/\/ @optionsURL\s+(.+)\s*$/im),
                     startup: extractSingleMeta(header, /\/\/ @startup\s+(.+)\s*$/im),
                     license: extractSingleMeta(header, /\/\/ @license\s+(.+)\s*$/im),
+                    longDescription,
                     fullDescription
                 }
 
@@ -370,6 +376,20 @@
                     return match?.[matchedGroup]?.trim() || "";
                 }
 
+                function extractMultiMeta (header, pattern, matchedGroup = 1) {
+                    const values = [];
+                    let match;
+                    pattern.lastIndex = 0;
+                    while ((match = pattern.exec(header))) {
+                        const value = match?.[matchedGroup]?.trim();
+                        if (value) {
+                            values.push(value);
+                        }
+                    }
+                    pattern.lastIndex = 0;
+                    return values;
+                }
+
                 function buildRegexRules (header, mainWindowURL, findNextRe) {
                     const rex = { include: [], exclude: [] };
                     let match;
@@ -389,16 +409,30 @@
                 };
 
                 function extractDescription (header, file) {
-                    const hasLongDescription = /^\/\/\ @long-description/im.test(header);
-                    let description = hasLongDescription
-                        ? header.match(/\/\/ @description\s+.*?\/\*\s*(.+?)\s*\*\//is)?.[1]
-                        : header.match(/\/\/ @description\s+(.+)\s*$/im)?.[1];
+                    const longDescription = header.match(/\/\/ @long-description\b\s*[\r\n]+\/\/ @description\b\s*[\r\n]+\/\*\s*(.+?)\s*\*\//is)?.[1]?.trim() || "";
+                    const inlineDescription = header.match(/^\/\/ @description[ \t]+(.+)\s*$/im)?.[1]?.trim() || "";
+                    let description = inlineDescription || (longDescription ? getFirstLine(longDescription) : "");
                     if (!description) {
                         description = file.leafName;
                     }
-                    const fullDescription = description;
-                    description = getFirstLine(description);
-                    return { description, fullDescription };
+                    description = getFirstLine(description).trim();
+                    const fullDescription = buildFullDescription(description, longDescription);
+                    return { description, fullDescription, longDescription };
+                }
+
+                function buildFullDescription (description, longDescription) {
+                    if (!longDescription) {
+                        return description;
+                    }
+                    const normalizedDescription = (description || "").trim();
+                    const normalizedLongDescription = longDescription.trim();
+                    const firstLine = getFirstLine(normalizedLongDescription).trim();
+                    if (!normalizedDescription || firstLine !== normalizedDescription) {
+                        return normalizedLongDescription;
+                    }
+
+                    const remaining = normalizedLongDescription.split(/\r\n|\r|\n/).slice(1).join("\n").trim();
+                    return remaining || normalizedLongDescription;
                 }
 
                 function getFirstLine (text) {
