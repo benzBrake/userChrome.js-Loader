@@ -18,18 +18,7 @@ try {
 
     UserChrome_js.prototype = {
         observe: function (aSubject, aTopic, aData) {
-            // aSubject.addEventListener('load', this, true);
-            if (aSubject.document.isUncommittedInitialDocument) {
-                //Bug 543435
-                const parent = aSubject.parent;
-                aSubject.addEventListener("DOMContentLoaded", () => {
-                    //Library windowとかSidebrではDOMContentLoadedだと早すぎる
-                    parent.addEventListener("load", this, { once: true, capture: true })
-                }, { once: true })
-            } else {
-                //Library windowとかSidebrではDOMContentLoadedだと早すぎる
-                aSubject.addEventListener('load', this, { once: true, capture: true });
-            }
+            aSubject.addEventListener('load', this, true);
         },
 
         messageListener: function (msg) {
@@ -38,11 +27,12 @@ try {
 
             browser.messageManager.removeMessageListener('Extension:ExtensionViewLoaded', this.messageListener);
 
-            if (browser.ownerGlobal.location.href == 'chrome://extensions/content/dummy.xhtml') {
+            const browserWin = browser.documentGlobal || browser.ownerGlobal;
+            if (browserWin.location.href == 'chrome://extensions/content/dummy.xhtml') {
                 UC.webExts.set(addonId, browser);
                 Services.obs.notifyObservers(null, 'UCJS:WebExtLoaded', addonId);
             } else {
-                let win = browser.ownerGlobal.windowRoot.ownerGlobal;
+                let win = browserWin.windowRoot.ownerGlobal;
                 UC.sidebar.get(addonId)?.set(win, browser) || UC.sidebar.set(addonId, new Map([[win, browser]]));
                 Services.obs.notifyObservers(win, 'UCJS:SidebarLoaded', addonId);
             }
@@ -106,9 +96,4 @@ try {
 
 try {
     pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
-    //Don't enable this! Very dangerous if set to "true".
-    lockPref("security.allow_eval_with_system_principal", false);
-    //Don't enable this! Very dangerous if set to "true".
-    //lockPref("security.allow_unsafe_dangerous_privileged_evil_eval", false);
-
 } catch (e) { }
