@@ -1,0 +1,37 @@
+name: Build artifact
+
+on:
+  push:
+    paths:
+      - "*.js"
+      - "*.mjs"
+      - "**/*.js"
+      - "**/*.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p dist/userChrome.js-Loader
+          cp -R program profile dist/userChrome.js-Loader/
+          cp README.md LICENSE dist/userChrome.js-Loader/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: userChrome.js-Loader-${{ github.sha }}
+          path: dist/userChrome.js-Loader
