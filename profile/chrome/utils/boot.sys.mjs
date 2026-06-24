@@ -25,7 +25,7 @@ try {
             const browser = msg.target;
             const { addonId } = browser._contentPrincipal;
 
-            browser.messageManager.removeMessageListener('Extension:ExtensionViewLoaded', this.messageListener);
+            browser.messageManager.removeMessageListener('Extension:BackgroundViewLoaded', this.messageListener);
 
             const browserWin = browser.documentGlobal || browser.ownerGlobal;
             if (browserWin.location.href == 'chrome://extensions/content/dummy.xhtml') {
@@ -51,7 +51,7 @@ try {
                     this.sharedWindowOpened = true;
 
                     Management.on('extension-browser-inserted', function (topic, browser) {
-                        browser.messageManager.addMessageListener('Extension:ExtensionViewLoaded', this.messageListener.bind(this));
+                        browser.messageManager.addMessageListener('Extension:BackgroundViewLoaded', this.messageListener);
                     }.bind(this));
                     return;
                 }
