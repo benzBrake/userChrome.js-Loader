@@ -12,6 +12,14 @@ const UC = {
 }
 
 try {
+    const getNodeWindow = node =>
+        node?.documentGlobal || node?.relevantGlobal || node?.ownerDocument?.defaultView || null;
+
+    const getBrowserChromeWindow = win =>
+        win?.browsingContext?.embedderWindowGlobal?.browsingContext?.window ||
+        win?.windowRoot?.relevantGlobal ||
+        win;
+
     function UserChrome_js () {
         Services.obs.addObserver(this, 'domwindowopened', false);
     };
@@ -21,21 +29,23 @@ try {
             aSubject.addEventListener('load', this, true);
         },
 
-        messageListener: function (msg) {
-            const browser = msg.target;
-            const { addonId } = browser._contentPrincipal;
+        messageListener: {
+            receiveMessage: function (msg) {
+                const browser = msg.target;
+                const { addonId } = browser._contentPrincipal;
 
-            browser.messageManager.removeMessageListener('Extension:BackgroundViewLoaded', this.messageListener);
+                browser.messageManager.removeMessageListener('Extension:BackgroundViewLoaded', this);
 
-            const browserWin = browser.documentGlobal || browser.ownerGlobal;
-            if (browserWin.location.href == 'chrome://extensions/content/dummy.xhtml') {
-                UC.webExts.set(addonId, browser);
-                Services.obs.notifyObservers(null, 'UCJS:WebExtLoaded', addonId);
-            } else {
-                let win = browserWin.windowRoot.ownerGlobal;
-                UC.sidebar.get(addonId)?.set(win, browser) || UC.sidebar.set(addonId, new Map([[win, browser]]));
-                Services.obs.notifyObservers(win, 'UCJS:SidebarLoaded', addonId);
-            }
+                const browserWin = getNodeWindow(browser);
+                if (browserWin.location.href == 'chrome://extensions/content/dummy.xhtml') {
+                    UC.webExts.set(addonId, browser);
+                    Services.obs.notifyObservers(null, 'UCJS:WebExtLoaded', addonId);
+                } else {
+                    let win = getBrowserChromeWindow(browserWin);
+                    UC.sidebar.get(addonId)?.set(win, browser) || UC.sidebar.set(addonId, new Map([[win, browser]]));
+                    Services.obs.notifyObservers(win, 'UCJS:SidebarLoaded', addonId);
+                }
+            },
         },
 
         handleEvent: function (aEvent) {
