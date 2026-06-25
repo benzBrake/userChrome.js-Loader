@@ -1,0 +1,88 @@
+name: Nightly prerelease
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "program/**"
+      - "profile/**"
+      - "README.md"
+      - "LICENSE"
+      - ".github/workflows/nightly-release.yml"
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-prerelease
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Nightly prerelease
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          package_dir="dist/userChrome.js-Loader"
+          archive_name="userChrome.js-Loader-nightly.zip"
+
+          rm -rf dist
+          mkdir -p "${package_dir}"
+          cp -R program profile "${package_dir}/"
+          cp README.md LICENSE "${package_dir}/"
+
+          (
+              cd dist
+              zip -r "${archive_name}" userChrome.js-Loader
+          )
+
+      - name: Publish prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          tag_name="nightly"
+          archive_path="dist/userChrome.js-Loader-nightly.zip"
+          release_notes="dist/nightly-notes.md"
+
+          git tag -f "${tag_name}" "${GITHUB_SHA}"
+          git push origin "refs/tags/${tag_name}" --force
+
+          cat > "${release_notes}" << EOF
+          Automated nightly prerelease for commit ${GITHUB_SHA}.
+
+          Branch: ${GITHUB_REF_NAME}
+          Workflow: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          EOF
+
+          if gh release view "${tag_name}" > /dev/null 2>&1; then
+              gh release edit "${tag_name}" \
+                  --title "Nightly build" \
+                  --notes-file "${release_notes}" \
+                  --prerelease \
+                  --latest=false
+
+              gh release upload "${tag_name}" "${archive_path}" --clobber
+          else
+              gh release create "${tag_name}" \
+                  "${archive_path}" \
+                  --title "Nightly build" \
+                  --notes-file "${release_notes}" \
+                  --prerelease \
+                  --latest=false \
+                  --verify-tag
+          fi
