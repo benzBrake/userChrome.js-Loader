@@ -1,12 +1,17 @@
 # userChrome.js 环境
 
-
-
 基于 alice0775 环境打包，引用了Dummy的反签名代码，加入了来自`xiaoxiaoflood/firefox-scripts`环境的 Bootstrap Loader，支持 onlyonce 属性，使用这个 userChrome.js 可以安装适配过的传统扩展，部分适配`xiaoxiaoflood`/`mrOtherGuy`这个两个环境的脚本也可以无需移植就能使用。
 
 ~~之前是从 Firefox 100开始改的，实际上可以向下兼容，具体版本没有测试。~~
 
 从 20250219 以后的版本建议兼容性为 Firefox 135+
+
+## 下载
+
+| 版本    | 说明                | 地址                                                                        |
+| ------- | ------------------- | --------------------------------------------------------------------------- |
+| Nightly | 最新开发版（推荐）  | [下载](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/nightly) |
+| Fx100+  | Firefox 100+ 最终版 | [下载](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/fx_100)  |
 
 ## 使用说明
 
@@ -26,16 +31,15 @@
 
 ## 兼容的脚本
 
-| 序号 | 地址                                                         | 程度 |
-| ---- | ------------------------------------------------------------ | ---- |
-| 1    | https://github.com/alice0775/userChrome.js                   | 100% |
+| 序号 | 地址                                                                   | 程度 |
+| ---- | ---------------------------------------------------------------------- | ---- |
+| 1    | https://github.com/alice0775/userChrome.js                             | 100% |
 | 2    | https://github.com/benzBrake/FirefoxCustomize/tree/master/userChromeJS | 90%  |
-| 3    | https://github.com/Endor8/userChrome.js                      | 大量 |
-| 4    | https://github.com/xiaoxiaoflood/firefox-scripts/            | 少量 |
-| 5    | https://github.com/aminomancer/uc.css.js/tree/master/JS      | 少量 |
-| 6    | https://github.com/Aris-t2/CustomJSforFx                     | 少量 |
+| 3    | https://github.com/Endor8/userChrome.js                                | 大量 |
+| 4    | https://github.com/xiaoxiaoflood/firefox-scripts/                      | 少量 |
+| 5    | https://github.com/aminomancer/uc.css.js/tree/master/JS                | 少量 |
+| 6    | https://github.com/Aris-t2/CustomJSforFx                               | 少量 |
 
 ## 兼容的传统扩展
 
 https://github.com/xiaoxiaoflood/firefox-scripts/tree/master/extensions
-
