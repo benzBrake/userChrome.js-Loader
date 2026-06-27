@@ -1,6 +1,6 @@
 # userChrome.js 环境
 
-基于 alice0775 环境打包，引用了Dummy的反签名代码，加入了来自`xiaoxiaoflood/firefox-scripts`环境的 Bootstrap Loader，支持 onlyonce 属性，使用这个 userChrome.js 可以安装适配过的传统扩展，部分适配`xiaoxiaoflood`/`mrOtherGuy`这个两个环境的脚本也可以无需移植就能使用。
+一个功能丰富的 Firefox 用户界面自定义脚本加载器。基于 alice0775 环境，集成了 Bootstrap Loader（支持安装传统扩展）和反签名校验，提供 Greasemonkey 风格的元数据声明、四种执行模式（chrome 脚本、后台模块、自定义 Actor、内容脚本）、ESM 模块支持、偏好设置 API、函数 Hook 工具等基础设施。同时提供 `UC`/`_uc`/`xPref` 等跨环境兼容对象，可无需移植直接运行 alice0775、xiaoxiaoflood、mrOtherGuy 等环境的脚本。
 
 ~~之前是从 Firefox 100开始改的，实际上可以向下兼容，具体版本没有测试。~~
 
