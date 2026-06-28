@@ -1,4 +1,10 @@
-# userChrome.js 环境
+# userChrome.js Environment | userChrome.js 环境
+
+**[中文](#中文)** · **[English](#english)**
+
+---
+
+## 中文
 
 一个功能丰富的 Firefox 用户界面自定义脚本加载器。基于 alice0775 环境，集成了 Bootstrap Loader（支持安装传统扩展）和反签名校验，提供 Greasemonkey 风格的元数据声明、四种执行模式（chrome 脚本、后台模块、自定义 Actor、内容脚本）、ESM 模块支持、偏好设置 API、函数 Hook 工具等基础设施。同时提供 `UC`/`_uc`/`xPref` 等跨环境兼容对象，可无需移植直接运行 alice0775、xiaoxiaoflood、mrOtherGuy 等环境的脚本。
 
@@ -6,30 +12,37 @@
 
 从 20250219 以后的版本建议兼容性为 Firefox 135+
 
-## 下载
+### 下载
 
 | 版本    | 说明                | 地址                                                                        |
 | ------- | ------------------- | --------------------------------------------------------------------------- |
 | Nightly | 最新开发版（推荐）  | [下载](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/nightly) |
 | Fx100+  | Firefox 100+ 最终版 | [下载](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/fx_100)  |
 
-## 使用说明
+### 使用说明
 
-解压后最多有两个目录，`program`目录里的东西要解压到 Firefox.exe 所在目录，`profile`目录里的文件要解压到配置文件夹。
+解压后最多有两个目录，`program` 目录里的东西要解压到 Firefox.exe 所在目录，`profile` 目录里的文件要解压到配置文件夹。
 
-#### 如何查找 Firefox.exe 所在目录 和 配置文件夹？看图
+#### 如何查找 Firefox.exe 所在目录和配置文件夹？看图
 
 ![排障信息](support.jpg)
 
-注意：Linux 下软件目录可能需要**管理员权限**才能访问、
+注意：Linux 下软件目录可能需要**管理员权限**才能访问。
 
 #### 安装 userChrome.js 环境后如何安装脚本？
 
-下载 `.uc.js` 后缀的文件保存到**配置文件夹**下的**chrome**文件夹下
+下载 `.uc.js` 后缀的文件保存到**配置文件夹**下的**chrome** 文件夹下。
 
 ![安装脚本](install-scripts.png)
 
-## 兼容的脚本
+### 开发文档
+
+| 文档 | 说明 |
+| ---- | ---- |
+| [GUIDE.md](./GUIDE.md) | 脚本编写指南（中文） |
+| [GUIDE-en_US.md](./GUIDE-en_US.md) | Script Authoring Guide (English) |
+
+### 兼容的脚本
 
 | 序号 | 地址                                                                   | 程度 |
 | ---- | ---------------------------------------------------------------------- | ---- |
@@ -40,6 +53,61 @@
 | 5    | https://github.com/aminomancer/uc.css.js/tree/master/JS                | 少量 |
 | 6    | https://github.com/Aris-t2/CustomJSforFx                               | 少量 |
 
-## 兼容的传统扩展
+### 兼容的传统扩展
+
+https://github.com/xiaoxiaoflood/firefox-scripts/tree/master/extensions
+
+---
+
+## English
+
+A feature-rich Firefox UI customization script loader. Based on the alice0775 environment, it integrates a Bootstrap Loader (supports installing legacy extensions) and signature verification bypass. It provides Greasemonkey-style metadata declarations, four execution modes (chrome scripts, background modules, custom Actors, content scripts), ESM module support, preferences API, function hook utilities, and more. It also offers cross-environment compatible objects such as `UC`/`_uc`/`xPref`, enabling scripts from alice0775, xiaoxiaoflood, mrOtherGuy, and other environments to run without porting.
+
+~~Previously modified from Firefox 100; actually backward compatible, but exact versions untested.~~
+
+Versions after 20250219 are recommended for Firefox 135+.
+
+### Downloads
+
+| Version  | Description                        | Link                                                                        |
+| -------- | ---------------------------------- | --------------------------------------------------------------------------- |
+| Nightly  | Latest development build (recommended) | [Download](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/nightly) |
+| Fx100+   | Final build for Firefox 100+       | [Download](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/fx_100)  |
+
+### Installation
+
+After extracting, there are at most two directories. Files in the `program` directory should be extracted to the directory where Firefox.exe is located; files in the `profile` directory should be extracted to the profile folder.
+
+#### How to find the Firefox.exe directory and profile folder? See the screenshot
+
+![Troubleshooting Info](support.jpg)
+
+Note: On Linux, the application directory may require **administrator privileges** to access.
+
+#### How to install scripts after setting up the userChrome.js environment?
+
+Download files with the `.uc.js` extension and save them to the **chrome** folder inside the **profile folder**.
+
+![Install Scripts](install-scripts.png)
+
+### Documentation
+
+| Document | Description |
+| -------- | ----------- |
+| [GUIDE.md](./GUIDE.md) | 脚本编写指南（中文） |
+| [GUIDE-en_US.md](./GUIDE-en_US.md) | Script Authoring Guide (English) |
+
+### Compatible Scripts
+
+| # | URL                                                                      | Compatibility |
+| - | ------------------------------------------------------------------------ | ------------- |
+| 1 | https://github.com/alice0775/userChrome.js                               | 100%          |
+| 2 | https://github.com/benzBrake/FirefoxCustomize/tree/master/userChromeJS   | 90%           |
+| 3 | https://github.com/Endor8/userChrome.js                                  | Extensive     |
+| 4 | https://github.com/xiaoxiaoflood/firefox-scripts/                        | Limited       |
+| 5 | https://github.com/aminomancer/uc.css.js/tree/master/JS                  | Limited       |
+| 6 | https://github.com/Aris-t2/CustomJSforFx                                 | Limited       |
+
+### Compatible Legacy Extensions
 
 https://github.com/xiaoxiaoflood/firefox-scripts/tree/master/extensions
