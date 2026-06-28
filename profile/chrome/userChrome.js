@@ -990,7 +990,8 @@
                                 this.error(script.filename, ex);
                             }
                         } else {
-                            ChromeUtils.compileScript(script.chromedir + "?" + this.getLastModifiedTime(script.file)).then((r) => {
+                            const asyncScriptURI = script.url + "?" + this.getLastModifiedTime(script.file);
+                            ChromeUtils.compileScript(asyncScriptURI).then((r) => {
                                 if (r) {
                                     r.executeInGlobal(/*global*/ script.onlyonce ? { window: targetWin } : targetWin, { reportExceptions: true });
                                     script.isRunning = true;
