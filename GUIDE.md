@@ -142,14 +142,14 @@ boot.sys.mjs (每个 chrome 窗口)
 | 字段 | 示例 | 说明 |
 |------|------|------|
 | `@actor` | `MyActor` | 注册名为 `MyActor` 的 JSWindowActor |
-| `@actor:matches` | `https://example.com/*` | Actor 匹配 URL 列表 |
+| `@actor:matches` | `https://example.com/*` | Actor URL MatchPattern 列表（支持 `<all_urls>`） |
 | `@actor:events` | `DOMContentLoaded, click` | Actor 子进程监听的事件 |
-| `@actor:allframes` | `true` | Actor 是否注入所有 frame |
-| `@actor:includeChrome` | `true` | Actor 是否包含 chrome 文档 |
+| `@actor:allframes` | `true` | Actor 是否注入所有 frame（Firefox 默认 `false`） |
+| `@actor:includeChrome` | `true` | 允许 Actor 为 chrome browsing context 创建；child events 不会监听 chrome 文档 |
 | `@content` | `true` | 启用共享 content actor 模式 |
-| `@content:matches` | `https://example.com/*` | Content 匹配 URL |
+| `@content:matches` | `https://example.com/*` | Content URL MatchPattern（支持 `<all_urls>`） |
 | `@content:events` | `DOMContentLoaded` | Content 监听事件（默认 `DOMContentLoaded`） |
-| `@content:allframes` | `false` | Content 是否注入所有 frame |
+| `@content:allframes` | `false` | Content 是否注入所有 frame（共享模式默认 `true`） |
 | `@content:sandbox` | `true` | Content 是否在沙箱中运行 |
 | `@export` | `MyModule` | 导出的模块名（用于 actor/content 模式查找） |
 
@@ -361,14 +361,14 @@ export class MyActorParent extends JSWindowActorParent {
 export class MyActorChild extends JSWindowActorChild {
     handleEvent(event) {
         if (event.type === "DOMContentLoaded") {
-            const title = this.contentDocument.title;
+            const title = this.document.title;
             this.sendAsyncMessage("getContentInfo", { title });
         }
     }
 }
 ```
 
-**执行流程：** loader 读取 `@actor` 名称 → 设置 `parent.esModuleURI` 和 `child.esModuleURI` → 调用 `ChromeUtils.registerWindowActor` 注册。之后 `@include` 匹配的窗口中，Parent 类的实例会被创建。
+**执行流程：** loader 读取 `@actor` 名称 → 设置 `parent.esModuleURI` 和 `child.esModuleURI` → 调用 `ChromeUtils.registerWindowActor` 注册。Actor 按 `@actor:matches`、frame 和进程条件为匹配的 `WindowGlobal` 创建；它不是按 `@include` 或整个 tab/browser window 创建。`@actor:events` 会在匹配的 content 文档事件触发时创建 Child Actor。
 
 ### 模式三：Shared Content（`@content`）
 
@@ -414,7 +414,7 @@ export const MyContentModule = {
 };
 ```
 
-**执行流程：** loader 注册共享 `UcSharedActor` → 查找 `@export` 指定的模块导出 → 匹配 URL 时在 content 侧执行 `contentHandlers` 中对应事件的处理器。
+**执行流程：** loader 注册共享 `UcSharedActor` → 查找 `@export` 指定的模块导出 → 以 Firefox MatchPattern 匹配 URL，并按每个脚本的 `@content:allframes` 过滤后，在 content 侧执行对应的 `contentHandlers`。Child Actor 销毁时会自动清理该文档关联的 sandbox 与卸载回调；不要将 actor 实例跨导航保存。
 
 ---
 

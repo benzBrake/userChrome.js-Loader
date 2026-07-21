@@ -145,14 +145,14 @@ All fields are written between `// ==UserScript==` and `// ==/UserScript==`.
 | Field | Example | Description |
 |-------|---------|-------------|
 | `@actor` | `MyActor` | Register a JSWindowActor named `MyActor` |
-| `@actor:matches` | `https://example.com/*` | Actor URL match list |
+| `@actor:matches` | `https://example.com/*` | Actor URL MatchPattern list (supports `<all_urls>`) |
 | `@actor:events` | `DOMContentLoaded, click` | Child process events to listen for |
-| `@actor:allframes` | `true` | Whether the actor injects into all frames |
-| `@actor:includeChrome` | `true` | Whether the actor includes chrome documents |
+| `@actor:allframes` | `true` | Whether the actor injects into all frames (Firefox default: `false`) |
+| `@actor:includeChrome` | `true` | Allow creation for chrome browsing contexts; child events do not listen to chrome documents |
 | `@content` | `true` | Enable shared content actor mode |
-| `@content:matches` | `https://example.com/*` | Content URL match |
+| `@content:matches` | `https://example.com/*` | Content URL MatchPattern (supports `<all_urls>`) |
 | `@content:events` | `DOMContentLoaded` | Content events to listen for (default: `DOMContentLoaded`) |
-| `@content:allframes` | `false` | Whether content injects into all frames |
+| `@content:allframes` | `false` | Whether content injects into all frames (shared mode defaults to `true`) |
 | `@content:sandbox` | `true` | Whether content runs in a sandbox |
 | `@export` | `MyModule` | Exported module name (used for actor/content mode lookup) |
 
@@ -364,14 +364,14 @@ export class MyActorParent extends JSWindowActorParent {
 export class MyActorChild extends JSWindowActorChild {
     handleEvent(event) {
         if (event.type === "DOMContentLoaded") {
-            const title = this.contentDocument.title;
+            const title = this.document.title;
             this.sendAsyncMessage("getContentInfo", { title });
         }
     }
 }
 ```
 
-**Execution flow:** The loader reads the `@actor` name → sets `parent.esModuleURI` and `child.esModuleURI` → calls `ChromeUtils.registerWindowActor` to register. After that, Parent class instances are created in `@include`-matched windows.
+**Execution flow:** The loader reads the `@actor` name → sets `parent.esModuleURI` and `child.esModuleURI` → calls `ChromeUtils.registerWindowActor` to register. Actors are created for matching `WindowGlobal` instances based on `@actor:matches`, frame, and process conditions; they are not created per `@include`, tab, or browser window. A matching content-document event in `@actor:events` creates the Child Actor.
 
 ### Mode 3: Shared Content (`@content`)
 
@@ -417,7 +417,7 @@ export const MyContentModule = {
 };
 ```
 
-**Execution flow:** The loader registers a shared `UcSharedActor` → looks up the module export specified by `@export` → executes the corresponding event handler from `contentHandlers` on the content side when URLs match.
+**Execution flow:** The loader registers a shared `UcSharedActor` → looks up the module export specified by `@export` → uses Firefox MatchPattern URL matching and each script's `@content:allframes` setting before executing the corresponding `contentHandlers` handler. When a Child Actor is destroyed, its document-specific sandboxes and unload callbacks are cleaned up; do not retain actor instances across navigations.
 
 ---
 
