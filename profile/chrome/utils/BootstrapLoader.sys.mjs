@@ -5,6 +5,9 @@
 'use strict';
 
 const Services = globalThis.Services;
+const OPTIONS_TYPE_DIALOG = 1;
+const OPTIONS_DIALOG_MIN_SIZE = 100;
+const OPTIONS_DIALOG_MAX_SIZE = 10000;
 
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
@@ -12,6 +15,29 @@ ChromeUtils.defineESModuleGetters(lazy, {
   ConsoleAPI: 'resource://gre/modules/Console.sys.mjs',
   InstallRDF: 'chrome://userchromejs/content/utils/RDFManifestConverter.sys.mjs',
 });
+
+function isDialogOptionsAddon(addon) {
+  return addon?.__AddonInternal__?.optionsType === OPTIONS_TYPE_DIALOG &&
+    !!addon.optionsURL;
+}
+
+function getOptionsDialogFeatures(addon) {
+  let features = 'chrome,titlebar,toolbar,centerscreen';
+  let startupData = addon?.__AddonInternal__?.startupData;
+  let optionsDialog = startupData?.userChromeJSLoader?.optionsDialog;
+  for (let dimension of ['width', 'height']) {
+    let value = optionsDialog?.[dimension];
+    if (Number.isInteger(value) &&
+      value >= OPTIONS_DIALOG_MIN_SIZE &&
+      value <= OPTIONS_DIALOG_MAX_SIZE) {
+      features += `,${dimension}=${value}`;
+    }
+  }
+  if (optionsDialog?.resizable === true) {
+    features += ',resizable';
+  }
+  return features;
+}
 
 Services.obs.addObserver(doc => {
   if (doc.location.protocol + doc.location.pathname === 'about:addons' ||
@@ -21,7 +47,7 @@ Services.obs.addObserver(doc => {
     win.customElements.get('addon-card').prototype.handleEvent = function (e) {
       if (e.type === 'click' &&
         e.target.getAttribute('action') === 'preferences' &&
-        this.addon.__AddonInternal__.optionsType == 1/*AddonManager.OPTIONS_TYPE_DIALOG*/ && !!this.addon.optionsURL) {
+        isDialogOptionsAddon(this.addon)) {
         var windows = Services.wm.getEnumerator(null);
         while (windows.hasMoreElements()) {
           var win2 = windows.getNext();
@@ -33,7 +59,7 @@ Services.obs.addObserver(doc => {
             return;
           }
         }
-        var features = 'chrome,titlebar,toolbar,centerscreen';
+        var features = getOptionsDialogFeatures(this.addon);
         win.docShell.rootTreeItem.domWindow.openDialog(this.addon.optionsURL, this.addon.id, features);
       } else {
         handleEvent_orig.apply(this, arguments);
@@ -42,7 +68,7 @@ Services.obs.addObserver(doc => {
     let update_orig = win.customElements.get('addon-options').prototype.update;
     win.customElements.get('addon-options').prototype.update = function (card, addon) {
       update_orig.apply(this, arguments);
-      if (addon.__AddonInternal__?.optionsType == 1/*AddonManager.OPTIONS_TYPE_DIALOG*/ && !!addon.optionsURL)
+      if (isDialogOptionsAddon(addon))
         this.querySelector('panel-item[data-l10n-id="preferences-addon-button"]').hidden = false;
     }
   }
@@ -241,6 +267,49 @@ var BootstrapLoader = {
 
       if (addon.optionsType)
         addon.optionsType = parseInt(addon.optionsType);
+
+      if (hasOwnProperty(manifest, 'optionsResizable')) {
+        if (manifest.optionsResizable !== 'true' && manifest.optionsResizable !== 'false') {
+          throw new Error('Install manifest optionsResizable must be true or false');
+        }
+      }
+      let optionsWidth;
+      if (hasOwnProperty(manifest, 'optionsWidth')) {
+        optionsWidth = Number(manifest.optionsWidth);
+        if (!/^\d+$/.test(manifest.optionsWidth) ||
+          !Number.isSafeInteger(optionsWidth) ||
+          optionsWidth < OPTIONS_DIALOG_MIN_SIZE ||
+          optionsWidth > OPTIONS_DIALOG_MAX_SIZE) {
+          throw new Error(
+            `Install manifest optionsWidth must be an integer from ${OPTIONS_DIALOG_MIN_SIZE} to ${OPTIONS_DIALOG_MAX_SIZE}`
+          );
+        }
+      }
+      let optionsHeight;
+      if (hasOwnProperty(manifest, 'optionsHeight')) {
+        optionsHeight = Number(manifest.optionsHeight);
+        if (!/^\d+$/.test(manifest.optionsHeight) ||
+          !Number.isSafeInteger(optionsHeight) ||
+          optionsHeight < OPTIONS_DIALOG_MIN_SIZE ||
+          optionsHeight > OPTIONS_DIALOG_MAX_SIZE) {
+          throw new Error(
+            `Install manifest optionsHeight must be an integer from ${OPTIONS_DIALOG_MIN_SIZE} to ${OPTIONS_DIALOG_MAX_SIZE}`
+          );
+        }
+      }
+      if (addon.optionsType === OPTIONS_TYPE_DIALOG && addon.optionsURL &&
+        (manifest.optionsResizable === 'true' ||
+          optionsWidth !== undefined || optionsHeight !== undefined)) {
+        addon.startupData = Object.assign({}, addon.startupData, {
+          userChromeJSLoader: {
+            optionsDialog: {
+              ...(manifest.optionsResizable === 'true' && { resizable: true }),
+              ...(optionsWidth !== undefined && { width: optionsWidth }),
+              ...(optionsHeight !== undefined && { height: optionsHeight }),
+            },
+          },
+        });
+      }
     }
 
     addon.defaultLocale = readLocale(manifest, true);
