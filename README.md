@@ -57,6 +57,18 @@
 
 https://github.com/xiaoxiaoflood/firefox-scripts/tree/master/extensions
 
+#### 传统扩展选项窗口
+
+对于使用 `<em:optionsType>1</em:optionsType>` 的独立选项窗口，可以在 `install.rdf` 中声明是否允许缩放以及默认内容尺寸：
+
+```xml
+<em:optionsResizable>true</em:optionsResizable>
+<em:optionsWidth>1080</em:optionsWidth>
+<em:optionsHeight>720</em:optionsHeight>
+```
+
+Loader 会为该扩展的选项窗口添加 `resizable`、`width` 和 `height` 特性。省略 `optionsResizable` 或设为 `false` 时，窗口保持不可缩放；省略某个尺寸属性时，Firefox 自动确定对应尺寸。`optionsWidth` 和 `optionsHeight` 必须是 100 到 10000 之间的整数 CSS 像素值。
+
 ---
 
 ## English
@@ -111,3 +123,15 @@ Download files with the `.uc.js` extension and save them to the **chrome** folde
 ### Compatible Legacy Extensions
 
 https://github.com/xiaoxiaoflood/firefox-scripts/tree/master/extensions
+
+#### Legacy Extension Options Dialogs
+
+For standalone options windows using `<em:optionsType>1</em:optionsType>`, declare whether the dialog is resizable and its default content size in `install.rdf`:
+
+```xml
+<em:optionsResizable>true</em:optionsResizable>
+<em:optionsWidth>1080</em:optionsWidth>
+<em:optionsHeight>720</em:optionsHeight>
+```
+
+The Loader adds the `resizable`, `width`, and `height` window features for that extension. If `optionsResizable` is omitted or set to `false`, the options window remains non-resizable. If either size property is omitted, Firefox determines that dimension automatically. `optionsWidth` and `optionsHeight` must be integer CSS-pixel values from 100 through 10000.
