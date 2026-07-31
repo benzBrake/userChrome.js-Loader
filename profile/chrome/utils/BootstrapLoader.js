@@ -8,6 +8,7 @@ const Services = globalThis.Services;
 const OPTIONS_TYPE_DIALOG = 1;
 const OPTIONS_DIALOG_MIN_SIZE = 100;
 const OPTIONS_DIALOG_MAX_SIZE = 10000;
+let resourceSubstitutionSerial = 0;
 
 ChromeUtils.defineESModuleGetters(this, {
   Blocklist: 'resource://gre/modules/Blocklist.sys.mjs',
@@ -178,6 +179,31 @@ function buildJarURI(aJarfile, aPath) {
   let uri = Services.io.newFileURI(aJarfile);
   uri = 'jar:' + uri.spec + '!/' + aPath;
   return Services.io.newURI(uri);
+}
+
+function createResourceSubstitution(addonId, rootURI) {
+  const resourceHandler = Services.io
+    .getProtocolHandler('resource')
+    .QueryInterface(Ci.nsIResProtocolHandler);
+  const safeAddonId = addonId
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'addon';
+  const substitution = `userchromejs-bootstrap-${safeAddonId}-${++resourceSubstitutionSerial}`;
+  let cleared = false;
+
+  resourceHandler.setSubstitution(substitution, rootURI);
+
+  return {
+    scriptURI: `resource://${substitution}/bootstrap.js`,
+    clear() {
+      if (cleared) {
+        return;
+      }
+      resourceHandler.setSubstitution(substitution, null);
+      cleared = true;
+    },
+  };
 }
 
 var BootstrapLoader = {
@@ -409,7 +435,11 @@ var BootstrapLoader = {
 
   loadScope(addon) {
     let file = addon.file || addon._sourceBundle;
-    let uri = getURIForResourceInFile(file, 'bootstrap.js').spec;
+    const resourceSubstitution = createResourceSubstitution(
+      addon.id,
+      getURIForResourceInFile(file, '')
+    );
+    let uri = resourceSubstitution.scriptURI;
     let principal = Services.scriptSecurityManager.getSystemPrincipal();
 
     let sandbox = new Cu.Sandbox(principal, {
@@ -427,6 +457,7 @@ var BootstrapLoader = {
 
       Services.scriptloader.loadSubScript(uri, sandbox);
     } catch (e) {
+      resourceSubstitution.clear();
       logger.warn(`Error loading bootstrap.js for ${addon.id}`, e);
     }
 
@@ -451,16 +482,16 @@ var BootstrapLoader = {
     let shutdown = findMethod('shutdown');
 
     /**
-     * Reads content from a jar: URI
+     * Reads content from a package resource URI.
      *
-     * @param {nsIURI} jarURI - The jar: URI to read from
-     * @returns {Promise<string>} The content of the file inside the JAR
+     * @param {nsIURI} uri - The package resource to read
+     * @returns {Promise<string>} The resource content
      */
-    async function readFromJarURI(jarURI) {
+    async function readFromURI(uri) {
       return new Promise((resolve, reject) => {
         try {
           const channel = Services.io.newChannelFromURI(
-            jarURI,
+            uri,
             null,
             Services.scriptSecurityManager.getSystemPrincipal(),
             null,
@@ -539,37 +570,55 @@ var BootstrapLoader = {
       },
 
       async startup(...args) {
-        if (addon.type == 'extension') {
-          logger.debug(`Registering manifest for ${file.path}\n`);
-          const manifestURI = getURIForResourceInFile(file, 'chrome.manifest');
-          let manifestData = await readFromJarURI(manifestURI);
-          let chromeManifest = new ChromeManifest(() => {
-            return manifestData;
-          }, {
-            application: Services.appinfo.ID,
-            appversion: Services.appinfo.version,
-            platformversion: Services.appinfo.platformVersion,
-            os: Services.appinfo.OS,
-            osversion: Services.sysinfo.getProperty('version'),
-            abi: Services.appinfo.XPCOMABI
-          });
-          await chromeManifest.parse()
-          this._clearManifest = createManifestTemporarily(chromeManifest.toString(getURIForResourceInFile(file, '').spec));
+        try {
+          if (addon.type == 'extension') {
+            logger.debug(`Registering manifest for ${file.path}\n`);
+            const manifestURI = getURIForResourceInFile(file, 'chrome.manifest');
+            let manifestData = await readFromURI(manifestURI);
+            let chromeManifest = new ChromeManifest(() => {
+              return manifestData;
+            }, {
+              application: Services.appinfo.ID,
+              appversion: Services.appinfo.version,
+              platformversion: Services.appinfo.platformVersion,
+              os: Services.appinfo.OS,
+              osversion: Services.sysinfo.getProperty('version'),
+              abi: Services.appinfo.XPCOMABI
+            });
+            await chromeManifest.parse()
+            this._clearManifest = createManifestTemporarily(chromeManifest.toString(getURIForResourceInFile(file, '').spec));
+          }
+          return await startup(...args);
+        } catch (error) {
+          if (this._clearManifest) {
+            this._clearManifest();
+            this._clearManifest = null;
+          }
+          resourceSubstitution.clear();
+          throw error;
         }
-        return startup(...args);
       },
 
       shutdown(data, reason) {
-        try {
-          return shutdown(data, reason);
-        } catch (err) {
-          throw err;
-        } finally {
-          if (reason != BOOTSTRAP_REASONS.APP_SHUTDOWN) {
+        const cleanup = () => {
+          if (reason != BOOTSTRAP_REASONS.APP_SHUTDOWN && this._clearManifest) {
             logger.debug(`Removing manifest for ${file.path}\n`);
             this._clearManifest();
             this._clearManifest = null;
           }
+          resourceSubstitution.clear();
+        };
+
+        try {
+          const result = shutdown(data, reason);
+          if (result && typeof result.finally === 'function') {
+            return result.finally(cleanup);
+          }
+          cleanup();
+          return result;
+        } catch (err) {
+          cleanup();
+          throw err;
         }
       },
     };

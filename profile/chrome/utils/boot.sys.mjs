@@ -88,8 +88,6 @@ try {
             let window = document.defaultView;
             let { location } = window;
             if (location && location.protocol == 'chrome:') {
-                const ios = Cc["@mozilla.org/network/io-service;1"].getService(Ci.nsIIOService);
-                const fph = ios.getProtocolHandler("file").QueryInterface(Ci.nsIFileProtocolHandler);
                 const ds = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties);
 
                 if (!this.sharedWindowOpened && location.href == 'chrome://extensions/content/dummy.xhtml') {
@@ -108,10 +106,8 @@ try {
 
                 let file = ds.get("UChrm", Ci.nsIFile);
                 file.append('userChrome.js');
-                let fileURL = fph
-                    .getURLSpecFromActualFile(file) + "?" + file.lastModifiedTime;
-                Cc["@mozilla.org/moz/jssubscript-loader;1"].getService(Ci.mozIJSSubScriptLoader)
-                    .loadSubScript(fileURL, document.defaultView, 'UTF-8');
+                let scriptURL = `chrome://userchromejs/content/userChrome.js?${file.lastModifiedTime}`;
+                Services.scriptloader.loadSubScript(scriptURL, document.defaultView, 'UTF-8');
             }
         },
     };
