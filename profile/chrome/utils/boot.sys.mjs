@@ -44,6 +44,12 @@ try {
                 ChromeUtils.importESModule("chrome://userchromejs/content/utils/xPref.sys.mjs").xPref
             );
 
+            if (!("UC_API" in window)) {
+                ChromeUtils.defineLazyGetter(window, "UC_API", () =>
+                    ChromeUtils.importESModule("chrome://userchromejs/content/utils/UcCompatApi.sys.mjs").UC_API
+                );
+            }
+
             window.UC = UC;
 
             ChromeUtils.defineLazyGetter(window, "_uc", () =>
@@ -56,7 +62,7 @@ try {
         observe: function (aSubject, aTopic, aData) {
             if (aTopic == 'chrome-document-global-created') {
                 // Some chrome documents execute inline scripts before the window load event.
-                // Inject UC/xPref/_uc here so helper pages like StyloaiX editor can use them immediately.
+                // Inject loader globals here so helper pages can use them immediately.
                 this.injectWindowGlobals(aSubject);
                 return;
             }
