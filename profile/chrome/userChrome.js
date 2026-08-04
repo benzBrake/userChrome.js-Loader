@@ -14,7 +14,8 @@
 // 4.Support window.userChrome_js.loadOverlay(overlay [,observer]) <--- not work in recent Firefox
 // Modified by Alice0775
 //
-// @version       2026/08/03 Bug 1872673 - Console.sys.mjs removed the console export
+// @version       2026/08/04 Bug 2047680 - support explicit safeForUntrustedWebProcess actor metadata
+// @note          2026/08/04 Firefox 154: require actor scripts to opt in before loading in web/file processes
 // @version       2026/07/31 Bug 1974213 - load local scripts through chrome:// URLs
 // @note          2026/07/31 Firefox 155: removed file: URLs from local script loading
 // @version       2026/03/01 Bug 2017957 - Add freezeBuiltins option to Cu.Sandbox
@@ -107,10 +108,8 @@
         registerSharedChromeHandler,
         registerSharedScript,
     } = ChromeUtils.importESModule("chrome://userchromejs/content/utils/UcActorRegistry.sys.mjs");
-    // Bug 1872673 removed the shared `console` export from Console.sys.mjs.
-    const { ConsoleAPI } = ChromeUtils.importESModule("resource://gre/modules/Console.sys.mjs");
     const lazy = {}
-    ChromeUtils.defineLazyGetter(lazy, "console", () => new ConsoleAPI({
+    ChromeUtils.defineLazyGetter(lazy, "console", () => console.createInstance({
         prefix: "userChrome.js"
     }));
     // -- config --
@@ -120,7 +119,7 @@
     const REPLACECACHE = true; //スクリプトの更新日付によりキャッシュを更新する: true , しない:[false]
     //=====================USE_0_63_FOLDER = falseの時===================
     var UCJS = new Array("UCJSFiles", "userContent", "userMenu"); //UCJS Loader 仕様を適用
-    var arrSubdir = new Array("", "xul", "TabMixPlus", "withTabMixPlus", "SubScript", "UCJSFiles", "userCrome.js.0.8", "userContent", "userMenu", "userChromeJS");    //スクリプトはこの順番で実行される
+    var arrSubdir = new Array("", "xul", "TabMixPlus", "withTabMixPlus", "SubScript", "UCJSFiles", "userCrome.js.0.8", "userContent", "userMenu", "UserChromeJS");    //スクリプトはこの順番で実行される
     //===================================================================
     const ALWAYSEXECUTE = ['rebuild_userChrome.uc.xul', 'rebuild_userChrome.uc.js']; //常に実行するスクリプト
     var INFO = true;
@@ -174,6 +173,17 @@
         get hackVersion () {
             delete this.hackVersion;
             return this.hackVersion = "0.8";
+            //拡張のバージョン違いを吸収
+            this.baseUrl = /^(chrome:\/\/\S+\/content\/)\S+/i.test(Error().fileName).$1;
+            if (!/^(chrome:\/\/\S+\/content\/)\S+/i.test(Error().fileName)) {
+            } else if (Error().fileName.indexOf("chrome://uc_js/content/uc_js.xul") > -1 ||
+                "chrome://userchrome_js_cache/content/userChrome.js" == Error().fileName) {  //0.8.0+ or 0.7
+                return this.hackVersion = "0.8+";
+            } else if (Error().fileName.indexOf("chrome://browser/content/browser.xul -> ") == 0) {
+                return this.hackVersion = "0.8.1";
+            } else {
+                return this.hackVersion = "0.8mod";
+            }
         },
 
         //スクリプトデータを作成
@@ -368,6 +378,13 @@
 
                     const allFrames = extractSingleMeta(header, /\/\/ @actor:allframes\s+(.+)\s*$/im);
                     if (allFrames) actorParams.allFrames = allFrames === 'true';
+                    const safeForUntrustedWebProcess = extractSingleMeta(
+                        header,
+                        /\/\/ @actor:safeForUntrustedWebProcess\s+(.+)\s*$/im
+                    );
+                    if (/^(?:true|false)$/i.test(safeForUntrustedWebProcess)) {
+                        actorParams.safeForUntrustedWebProcess = safeForUntrustedWebProcess.toLowerCase() === 'true';
+                    }
 
                     // 将结果合并到对象 s 中
                     Object.assign(s, {
@@ -400,6 +417,13 @@
                     if (allFrames) contentParams.allFrames = allFrames === 'true';
                     const contentSandbox = extractSingleMeta(header, /\/\/ @content:sandbox\s+(.+)\s*$/im);
                     if (contentSandbox) contentParams.sandbox = contentSandbox === 'true';
+                    const safeForUntrustedWebProcess = extractSingleMeta(
+                        header,
+                        /\/\/ @content:safeForUntrustedWebProcess\s+(.+)\s*$/im
+                    );
+                    if (/^(?:true|false)$/i.test(safeForUntrustedWebProcess)) {
+                        contentParams.safeForUntrustedWebProcess = safeForUntrustedWebProcess.toLowerCase() === 'true';
+                    }
 
                     Object.assign(s, {
                         isContentScript: true,
@@ -630,6 +654,7 @@
                     events: script.contentParams?.events || { DOMContentLoaded: {} },
                     allFrames: script.contentParams?.allFrames !== false,
                     sandbox: !!script.contentParams?.sandbox,
+                    safeForUntrustedWebProcess: script.contentParams?.safeForUntrustedWebProcess === true,
                 });
             }
             if (!hasSharedScript) {

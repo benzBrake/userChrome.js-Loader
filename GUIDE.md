@@ -146,11 +146,13 @@ boot.sys.mjs (每个 chrome 窗口)
 | `@actor:events` | `DOMContentLoaded, click` | Actor 子进程监听的事件 |
 | `@actor:allframes` | `true` | Actor 是否注入所有 frame（Firefox 默认 `false`） |
 | `@actor:includeChrome` | `true` | 允许 Actor 为 chrome browsing context 创建；child events 不会监听 chrome 文档 |
+| `@actor:safeForUntrustedWebProcess` | `true` | Firefox 154+ 要求：允许 Actor 在非特权 web/file 进程中加载 |
 | `@content` | `true` | 启用共享 content actor 模式 |
 | `@content:matches` | `https://example.com/*` | Content URL MatchPattern（支持 `<all_urls>`） |
 | `@content:events` | `DOMContentLoaded` | Content 监听事件（默认 `DOMContentLoaded`） |
 | `@content:allframes` | `false` | Content 是否注入所有 frame（共享模式默认 `true`） |
 | `@content:sandbox` | `true` | Content 是否在沙箱中运行 |
+| `@content:safeForUntrustedWebProcess` | `true` | Firefox 154+ 要求：声明后方可在非特权 web/file 进程中加载 |
 | `@export` | `MyModule` | 导出的模块名（用于 actor/content 模式查找） |
 
 ### 注意

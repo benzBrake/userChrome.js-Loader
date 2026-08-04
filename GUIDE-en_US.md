@@ -149,11 +149,13 @@ All fields are written between `// ==UserScript==` and `// ==/UserScript==`.
 | `@actor:events` | `DOMContentLoaded, click` | Child process events to listen for |
 | `@actor:allframes` | `true` | Whether the actor injects into all frames (Firefox default: `false`) |
 | `@actor:includeChrome` | `true` | Allow creation for chrome browsing contexts; child events do not listen to chrome documents |
+| `@actor:safeForUntrustedWebProcess` | `true` | Firefox 154+ required: allow the actor to load in non-privileged web/file processes |
 | `@content` | `true` | Enable shared content actor mode |
 | `@content:matches` | `https://example.com/*` | Content URL MatchPattern (supports `<all_urls>`) |
 | `@content:events` | `DOMContentLoaded` | Content events to listen for (default: `DOMContentLoaded`) |
 | `@content:allframes` | `false` | Whether content injects into all frames (shared mode defaults to `true`) |
 | `@content:sandbox` | `true` | Whether content runs in a sandbox |
+| `@content:safeForUntrustedWebProcess` | `true` | Firefox 154+ required: must declare to load in non-privileged web/file processes |
 | `@export` | `MyModule` | Exported module name (used for actor/content mode lookup) |
 
 ### Notes
