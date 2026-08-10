@@ -22,15 +22,41 @@ interface UserChromeWidgetDescription {
   [name: string]: unknown;
 }
 
+interface UserChromeCompatScript {
+  filename: string;
+  file: nsIFile;
+  url: string;
+  name?: string;
+  version?: string;
+  author?: string;
+  id?: string;
+  description?: string;
+  regex: RegExp;
+  onlyonce: boolean;
+  startup?: string;
+  shutdown?: string;
+  isRunning?: boolean;
+  readonly isEnabled?: boolean;
+  [name: string]: unknown;
+}
+
 interface _ucAPI {
   readonly APPNAME: string;
+  readonly ALWAYSEXECUTE: string;
   readonly BROWSERCHROME: string;
   readonly BROWSERTYPE: string;
   readonly BROWSERNAME: string;
+  readonly PREF_SCRIPTSDISABLED: string;
   readonly isFaked: boolean;
   readonly isESM: boolean;
   readonly sss: any;
   readonly chromedir: nsIFile;
+  readonly scripts: Record<string, UserChromeCompatScript>;
+  readonly everLoaded: string[];
+  getScripts(): Record<string, UserChromeCompatScript>;
+  getScriptData(file: nsIFile): UserChromeCompatScript;
+  readFile(file: nsIFile, metaOnly?: boolean): string;
+  loadScript(script: UserChromeCompatScript, window: Window): boolean;
   windows(
     callback: (document: Document, window: Window, location: string) => unknown,
     onlyBrowsers?: boolean,

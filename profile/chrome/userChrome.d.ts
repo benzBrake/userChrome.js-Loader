@@ -36,6 +36,15 @@ interface UserChromeScript {
   filename: string;
   file: nsIFile;
   url: string;
+  relativePath?: string;
+  scriptId?: string;
+  name?: string;
+  version?: string;
+  author?: string;
+  id?: string;
+  updateURL?: string;
+  reviewURL?: string;
+  isEnabled?: boolean;
   dir: string;
   isActor: boolean;
   charset: string;
@@ -65,7 +74,6 @@ interface UserChromeScript {
   contentParams?: UserChromeContentParameters | null;
   executionMode?: UserChromeExecutionMode;
   moduleURI?: string;
-  scriptId?: string;
   isRunning?: boolean;
   chromedir?: string;
   LastModifiedTime?: number | string;
@@ -140,7 +148,17 @@ interface UserChromeLoader {
     exportedModule: unknown | null,
   ): void;
   runModuleScript(script: UserChromeScript, win: Window, targetWin: object): boolean;
-  registerScriptShutdown(script: UserChromeScript, win: Window, target: object): void;
+  readFile(file: nsIFile, metaOnly?: boolean): string;
+  getScriptData(file: nsIFile): UserChromeScript;
+  getScriptWindows(): Window[];
+  refreshDisabledState(): UserChromeDisabledState;
+  isScriptEnabled(script: UserChromeScript): boolean;
+  isLifecycleManaged(script: UserChromeScript): boolean;
+  isHotReloadable(script: UserChromeScript): boolean;
+  loadScript(script: UserChromeScript, win?: Window): boolean;
+  unloadScript(script: UserChromeScript): boolean;
+  reloadScript(script: UserChromeScript): UserChromeScript | null;
+  setScriptEnabled(script: UserChromeScript, enabled: boolean): boolean;
   loadOverlay(
     url: string,
     observer?: UserChromeOverlayObserverInput | null,
