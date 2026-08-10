@@ -74,7 +74,7 @@ boot.sys.mjs (each chrome window)
 2. Page `load` event — `boot.sys.mjs` is triggered
 3. `runScripts()` — Matches window URL, loads scripts sequentially by directory order
 4. Script `@startup` callback (if defined)
-5. Window `unload` event — Script `@shutdown` callbacks + sandbox destruction
+5. Window `unload` event — Run that window's `setUnloadMap` callbacks and destroy its sandbox
 
 ### `@startup` / `@shutdown`
 
@@ -88,7 +88,8 @@ boot.sys.mjs (each chrome window)
 - Code in `@startup` is executed via `Cu.evalInSandbox`, with parameters `(script, win)`
 - `script` is the metadata object (containing `filename`, `description`, `onlyonce`, etc.)
 - `win` is the current chrome window object
-- `@shutdown` fires on window `unload`, also receiving `(script, win)`
+- `@shutdown` fires only when a script is explicitly disabled or hot-reloaded, also receiving `(script, win)`
+- Closing a normal window does not run `@shutdown`
 
 ### `@onlyonce`
 
@@ -96,6 +97,23 @@ Scripts marked `@onlyonce` execute only once in the first matching window. In su
 
 - The script body is not re-executed
 - However, `@startup` callbacks still fire for each window
+
+On explicit unload, an `@onlyonce` script runs `@shutdown` once; a non-`@onlyonce` script runs it once for each window where it is active.
+
+### Hot Reload Boundary
+
+Hot reload is supported only for synchronous, `chrome-only` regular `.uc.js` files that are not injected through UCJS script-tag mode. A script must declare `@shutdown` to unload without a restart. `@async`, `.uc.mjs`, `.sys.mjs`, Actor/content scripts, and XUL overlays remain restart-required.
+
+Disabling a script without `@shutdown` only updates `userChrome.disable.script`; its current instance remains active, and the loader prevents it from being loaded twice in the same session.
+
+### `window.userChrome_js` Lifecycle API
+
+| Method | Description |
+|--------|-------------|
+| `loadScript(script, win)` | Load a supported script into an enabled matching window; does not execute it twice in the same window |
+| `unloadScript(script)` | Explicitly run `@shutdown` and clear runtime state; returns `false` when hot unload is unsupported |
+| `reloadScript(script)` | Unload, reparse from disk, and load with the latest modification-time cache key; returns `null` when unsupported |
+| `setScriptEnabled(script, enabled)` | Write Alice's `userChrome.disable.script` preference and load or unload immediately when the lifecycle permits |
 
 ---
 
@@ -561,6 +579,7 @@ Imported via lazy getter, sourced from `_uc.sys.mjs`.
 | Property/Method | Description |
 |----------------|-------------|
 | `_uc.APPNAME` | Application name (`"firefox"` or `"thunderbird"`) |
+| `_uc.ALWAYSEXECUTE` | xiaoxiaoflood-compatible manager script filename |
 | `_uc.BROWSERCHROME` | Main window URL (`"chrome://browser/content/browser.xhtml"`) |
 | `_uc.BROWSERTYPE` | Window type (`"navigator:browser"` or `"mail:3pane"`) |
 | `_uc.BROWSERNAME` | Display name (`"Firefox"` or `"Thunderbird"`) |
@@ -568,9 +587,18 @@ Imported via lazy getter, sourced from `_uc.sys.mjs`.
 | `_uc.isESM` | Always `true` |
 | `_uc.sss` | `nsIStyleSheetService` instance (stylesheet service) |
 | `_uc.chromedir` | `nsIFile` — UChrm directory |
+| `_uc.PREF_SCRIPTSDISABLED` | Fixed to Alice's `userChrome.disable.script` preference |
+| `_uc.scripts` | Regular `.uc.js` metadata indexed by filename |
+| `_uc.everLoaded` | IDs loaded this session that cannot be hot-unloaded |
+| `_uc.getScripts()` | Rescan scripts and synchronize active loader instances |
+| `_uc.getScriptData(file)` | Reparse a script from disk and replace its metadata |
+| `_uc.readFile(file, metaOnly)` | Read UTF-8 script content |
+| `_uc.loadScript(script, win)` | Delegate script loading into a window to the active loader |
 | `_uc.windows(fun, onlyBrowsers)` | Iterate windows; `fun` receives `(doc, win, location)` |
 | `_uc.createElement(doc, tag, attrs, XUL)` | Create element; `on*` attributes auto-register event listeners |
 | `_uc.createWidget(desc)` | Create CustomizableUI toolbar button |
+
+When files in different directories have the same name, `_uc.scripts` keeps the first item in loader scan order and logs a console warning.
 
 **`_uc.createWidget(desc)` parameters:**
 
@@ -652,6 +680,8 @@ setUnloadMap("myKey", function (key) {
     console.log("New cleanup callback");
 });
 ```
+
+Cleanup maps are isolated per window, so the same key in different windows does not collide. Hot reload does not run `setUnloadMap`; use `@shutdown` for script-level cleanup.
 
 ### `hookFunction` — Function Hooks
 
@@ -812,6 +842,9 @@ Within the same directory, scripts execute in alphabetical order by filename.
 Controlled via preferences (comma-separated filename lists):
 - `userChrome.disable.directory` — Disable an entire directory
 - `userChrome.disable.script` — Disable specific scripts
+- `userChrome.enable.reuse` — Controls cross-window scan-result reuse only; it is not a master switch
+
+This compatibility layer does not create, migrate, or depend on xiaoxiaoflood's `userChromeJS.*` lifecycle preferences, and does not implement its global Enabled switch; the existing AddonsPage debug preference remains separate.
 
 ---
 

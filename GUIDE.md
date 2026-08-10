@@ -72,7 +72,7 @@ boot.sys.mjs (每个 chrome 窗口)
 2. 页面 `load` 事件 — `boot.sys.mjs` 被触发
 3. `runScripts()` — 匹配窗口 URL，按目录顺序逐个加载脚本
 4. 脚本 `@startup` 回调（如有）
-5. 窗口 `unload` 事件 — 脚本 `@shutdown` 回调 + sandbox 销毁
+5. 窗口 `unload` 事件 — 执行该窗口的 `setUnloadMap` 回调并销毁 sandbox
 
 ### `@startup` / `@shutdown`
 
@@ -86,13 +86,31 @@ boot.sys.mjs (每个 chrome 窗口)
 - `@startup` 中的代码通过 `Cu.evalInSandbox` 执行，参数为 `(script, win)`
 - `script` 是元数据对象（包含 `filename`、`description`、`onlyonce` 等）
 - `win` 是当前 chrome 窗口对象
-- `@shutdown` 在窗口 `unload` 时触发，同样接收 `(script, win)`
+- `@shutdown` 只在显式停用或热重载脚本时触发，同样接收 `(script, win)`
+- 普通窗口关闭不会触发 `@shutdown`
 
 ### `@onlyonce`
 
 标记为 `@onlyonce` 的脚本只在第一个匹配窗口执行一次。后续窗口中：
 - 脚本体不会重新执行
 - 但 `@startup` 回调仍会在每个窗口触发
+
+显式卸载时，`@onlyonce` 脚本的 `@shutdown` 只执行一次；非 `@onlyonce` 脚本按实际运行窗口分别执行。
+
+### 热重载边界
+
+只有同步、`chrome-only`、非 UCJS script-tag 注入的普通 `.uc.js` 才能参与热重载，并且必须声明 `@shutdown` 才能无重启卸载。`@async`、`.uc.mjs`、`.sys.mjs`、Actor/content 脚本和 XUL overlay 仍需要重启。
+
+没有 `@shutdown` 的脚本被禁用时只更新 `userChrome.disable.script`；当前会话中的实例继续运行，且 loader 会阻止它在同一会话被重复加载。
+
+### `window.userChrome_js` 生命周期接口
+
+| 方法 | 说明 |
+|------|------|
+| `loadScript(script, win)` | 向匹配且启用的窗口加载受支持脚本；已在该窗口运行时不重复执行 |
+| `unloadScript(script)` | 显式执行 `@shutdown` 并注销运行状态；不支持热卸载时返回 `false` |
+| `reloadScript(script)` | 先卸载，再从磁盘重新解析并按最新修改时间加载；不支持时返回 `null` |
+| `setScriptEnabled(script, enabled)` | 写入 Alice 的 `userChrome.disable.script`，并在生命周期允许时立即加载或卸载 |
 
 ---
 
@@ -558,6 +576,7 @@ UC = {
 | 属性/方法 | 说明 |
 |-----------|------|
 | `_uc.APPNAME` | 应用名（`"firefox"` 或 `"thunderbird"`） |
+| `_uc.ALWAYSEXECUTE` | xiaoxiaoflood 兼容管理脚本文件名 |
 | `_uc.BROWSERCHROME` | 主窗口 URL（`"chrome://browser/content/browser.xhtml"`） |
 | `_uc.BROWSERTYPE` | 窗口类型（`"navigator:browser"` 或 `"mail:3pane"`） |
 | `_uc.BROWSERNAME` | 显示名（`"Firefox"` 或 `"Thunderbird"`） |
@@ -565,9 +584,18 @@ UC = {
 | `_uc.isESM` | 始终为 `true` |
 | `_uc.sss` | `nsIStyleSheetService` 实例（样式表服务） |
 | `_uc.chromedir` | `nsIFile` — UChrm 目录 |
+| `_uc.PREF_SCRIPTSDISABLED` | 固定为 Alice 参数 `userChrome.disable.script` |
+| `_uc.scripts` | 按文件名索引的普通 `.uc.js` 元数据 |
+| `_uc.everLoaded` | 本会话已执行且不能热卸载的脚本 ID |
+| `_uc.getScripts()` | 重新扫描脚本并同步活动 loader |
+| `_uc.getScriptData(file)` | 从磁盘重新解析并替换脚本元数据 |
+| `_uc.readFile(file, metaOnly)` | 读取 UTF-8 脚本内容 |
+| `_uc.loadScript(script, win)` | 委托当前 loader 向指定窗口加载脚本 |
 | `_uc.windows(fun, onlyBrowsers)` | 遍历窗口，fun 接收 `(doc, win, location)` |
 | `_uc.createElement(doc, tag, attrs, XUL)` | 创建元素，`on*` 属性自动注册事件监听 |
 | `_uc.createWidget(desc)` | 创建 CustomizableUI 工具栏按钮 |
+
+`_uc.scripts` 遇到不同目录中的同名文件时保留 loader 扫描顺序中的首项，并在控制台输出警告。
 
 **`_uc.createWidget(desc)` 参数：**
 
@@ -649,6 +677,8 @@ setUnloadMap("myKey", function (key) {
     console.log("新的清理回调");
 });
 ```
+
+清理表按窗口隔离；不同窗口使用相同 key 不会互相覆盖。热重载不会执行 `setUnloadMap`，脚本级卸载应使用 `@shutdown`。
 
 ### `hookFunction` — 函数钩子
 
@@ -809,6 +839,9 @@ Loader 按以下顺序扫描 `profile/chrome/` 下的子目录：
 通过偏好控制（逗号分隔的文件名列表）：
 - `userChrome.disable.directory` — 禁用整个目录
 - `userChrome.disable.script` — 禁用指定脚本
+- `userChrome.enable.reuse` — 仅控制多个窗口是否复用扫描结果，不是总开关
+
+本次兼容层不会创建、迁移或依赖 xiaoxiaoflood loader 的 `userChromeJS.*` 生命周期参数，也不提供其全局 Enabled 开关；AddonsPage 原有调试参数仍是独立功能。
 
 ---
 
