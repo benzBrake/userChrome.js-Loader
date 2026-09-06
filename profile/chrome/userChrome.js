@@ -1,4 +1,4 @@
-/* :::::::: Sub-Script/Overlay Loader v3.0.86mod no bind version ::::::::::::::: */
+/* :::::::: Sub-Script/Overlay Loader v3.0.85mod no bind version ::::::::::::::: */
 
 // automatically includes all files ending in .uc.xul and .uc.js from the profile's chrome folder
 
@@ -14,12 +14,10 @@
 // 4.Support window.userChrome_js.loadOverlay(overlay [,observer]) <--- not work in recent Firefox
 // Modified by Alice0775
 //
-// @version       2026/08/10 support restartless script reload and unload
-// @version       2026/08/10 align @startup/@shutdown lifecycle with xiaoxiaoflood scripts while keeping Alice prefs
-// @version       2026/08/04 Bug 2047680 - support explicit safeForUntrustedWebProcess actor metadata
-// @version       2026/08/04 Firefox 154: require actor scripts to opt in before loading in web/file processes
-// @version       2026/07/31 Bug 1974213 - load local scripts through chrome:// URLs
-// @version       2026/07/31 Firefox 155: removed file: URLs from local script loading
+// @version       2026/09/06 fix custom actors in origin-specific webIsolated processes, eave actor remoteTypes unset by default so webIsolated origins are matched
+// @version       2026/08/10 support restartless script reload and unload, align @startup/@shutdown lifecycle with xiaoxiaoflood scripts while keeping Alice prefs
+// @version       2026/08/04 Bug 2047680 - support explicit safeForUntrustedWebProcess actor metadata, Firefox 154: require actor scripts to opt in before loading in web/file processes
+// @version       2026/07/31 Bug 1974213 - load local scripts through chrome:// URLs, Firefox 155: removed file: URLs from local script loading
 // @version       2026/03/01 Bug 2017957 - Add freezeBuiltins option to Cu.Sandbox
 // @version       2026/06/24 add @backgroundmodule support
 // @version       2025/08/30 Fallback to only load mjs with chrome://
@@ -399,6 +397,8 @@
                     if (kindStr) actorParams.kind = kindStr.trim();
                     const includeChromeStr = extractSingleMeta(header, /\/\/ @actor:includeChrome\s+(.+)\s*$/im);
                     if (includeChromeStr) actorParams.includeChrome = includeChromeStr.trim() === 'true';
+                    const remoteTypesStr = extractSingleMeta(header, /\/\/ @actor:remoteTypes?\s+(.+)\s*$/im);
+                    if (remoteTypesStr) actorParams.remoteTypes = splitMetaList(remoteTypesStr);
                     const groupsStr = extractSingleMeta(header, /\/\/ @actor:groups\s+(.+)\s*$/im);
                     if (groupsStr) actorParams.messageManagerGroups = splitMetaList(groupsStr);
 
