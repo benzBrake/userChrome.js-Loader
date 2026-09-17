@@ -1454,7 +1454,7 @@
         document.documentElement.getAttribute("chromehidden") != "")
         return;
 
-    if (typeof gBrowser != undefined) {
+    if (typeof gBrowser != "undefined") {
         that.runScripts(doc);
         setTimeout(function (doc) { that.runOverlays(doc); }, 0, doc);
     } else {

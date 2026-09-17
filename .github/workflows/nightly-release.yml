@@ -5,8 +5,13 @@ on:
     branches:
       - main
     paths:
-      - "program/**"
-      - "profile/**"
+      - "src/**"
+      - "tests/**"
+      - "scripts/build.mjs"
+      - ".node-version"
+      - "eslint.config.js"
+      - "package.json"
+      - "package-lock.json"
       - "README.md"
       - "LICENSE"
       - ".github/workflows/nightly-release.yml"
@@ -30,25 +35,45 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare package
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check
+        run: npm run check
+
+      - name: Check whether Nightly is current
+        id: nightly
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
-          package_dir="dist/userChrome.js-Loader"
-          archive_name="userChrome.js-Loader-nightly.zip"
+          current_sha="$(git ls-remote --tags origin refs/tags/nightly | cut -f1)"
+          archive_name="$(gh release view nightly --json assets --jq \
+              '.assets[] | select(.name == "userChrome.js-Loader-nightly.zip") | .name' \
+              2> /dev/null || true)"
+          if [[ "${current_sha}" == "${GITHUB_SHA}" && \
+                "${archive_name}" == "userChrome.js-Loader-nightly.zip" ]]; then
+              echo "publish=false" >> "${GITHUB_OUTPUT}"
+              echo "Nightly already points to ${GITHUB_SHA}; skipping publication."
+          else
+              echo "publish=true" >> "${GITHUB_OUTPUT}"
+          fi
 
-          rm -rf dist
-          mkdir -p "${package_dir}"
-          cp -R program profile "${package_dir}/"
-          cp README.md LICENSE "${package_dir}/"
-
-          (
-              cd dist
-              zip -r "${archive_name}" userChrome.js-Loader
-          )
+      - name: Create archive
+        if: steps.nightly.outputs.publish == 'true'
+        working-directory: dist
+        run: zip -r userChrome.js-Loader-nightly.zip userChrome.js-Loader
 
       - name: Publish prerelease
+        if: steps.nightly.outputs.publish == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

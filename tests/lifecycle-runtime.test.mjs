@@ -13,12 +13,12 @@ import {
     markScriptRunning,
     registerScript,
     setWindowSandbox,
-} from '../profile/chrome/utils/UcScriptRuntime.sys.mjs';
+} from '../src/profile/chrome/utils/UcScriptRuntime.sys.mjs';
 import {
     getUnloadMaps,
     initUloadMap,
     setUnloadMap,
-} from '../profile/chrome/utils/ucf.sys.mjs';
+} from '../src/profile/chrome/utils/ucf.sys.mjs';
 
 class FixtureWindow {
     constructor(name) {

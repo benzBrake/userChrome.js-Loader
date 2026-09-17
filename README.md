@@ -22,7 +22,7 @@
 
 ### 使用说明
 
-解压后最多有两个目录，`program` 目录里的东西要解压到 Firefox.exe 所在目录，`profile` 目录里的文件要解压到配置文件夹。
+压缩包包含 `program`、`profile` 和供编辑器使用的 `types` 目录。安装时只需把 `program` 目录里的内容解压到 Firefox.exe 所在目录，并把 `profile` 目录里的文件解压到配置文件夹；`types` 不需要复制到 Firefox。
 
 #### 如何查找 Firefox.exe 所在目录和配置文件夹？看图
 
@@ -42,6 +42,17 @@
 | ---- | ---- |
 | [GUIDE.md](./GUIDE.md) | 脚本编写指南（中文） |
 | [GUIDE-en_US.md](./GUIDE-en_US.md) | Script Authoring Guide (English) |
+
+### 参与开发
+
+仓库源码位于 `src/`，开发环境使用 Node.js 24 和 npm。
+
+```bash
+npm install
+npm run check
+```
+
+`npm install` 会安装提交前 lint hook。`npm run check` 会依次执行 lint、测试和构建，并将可发布目录生成到 `dist/userChrome.js-Loader/`。
 
 ### 兼容的脚本
 
@@ -90,7 +101,7 @@ Versions after 20250219 are recommended for Firefox 135+.
 
 ### Installation
 
-After extracting, there are at most two directories. Files in the `program` directory should be extracted to the directory where Firefox.exe is located; files in the `profile` directory should be extracted to the profile folder.
+The archive contains `program`, `profile`, and editor declarations in `types`. For installation, extract the contents of `program` into the directory containing Firefox.exe and copy the files in `profile` into the profile folder. The `types` directory does not need to be copied into Firefox.
 
 #### How to find the Firefox.exe directory and profile folder? See the screenshot
 
@@ -110,6 +121,17 @@ Download files with the `.uc.js` extension and save them to the **chrome** folde
 | -------- | ----------- |
 | [GUIDE.md](./GUIDE.md) | 脚本编写指南（中文） |
 | [GUIDE-en_US.md](./GUIDE-en_US.md) | Script Authoring Guide (English) |
+
+### Development
+
+Source files live in `src/`. Development uses Node.js 24 and npm.
+
+```bash
+npm install
+npm run check
+```
+
+`npm install` installs the pre-commit lint hook. `npm run check` runs lint, tests, and the build, producing the distributable directory at `dist/userChrome.js-Loader/`.
 
 ### Compatible Scripts
 
