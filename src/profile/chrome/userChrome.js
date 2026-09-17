@@ -826,6 +826,7 @@
                 return true;
             }
 
+            if (this.INFO) this.debug("loadSubScript: " + script.filename);
             const targetWin = script.sandbox ? target : win;
             try {
                 const scriptURI = `${script.url}?${this.getLastModifiedTime(script.file)}`;
