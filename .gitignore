@@ -1,4 +1,5 @@
 .claude/
 .codex/
+AGENTS.local.md
 /dist/
 /node_modules/
