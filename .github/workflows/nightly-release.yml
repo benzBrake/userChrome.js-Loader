@@ -46,6 +46,8 @@ jobs:
 
       - name: Check
         run: npm run check
+        env:
+          RELEASE_CHANNEL: nightly
 
       - name: Check whether Nightly is current
         id: nightly

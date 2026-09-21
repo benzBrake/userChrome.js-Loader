@@ -40,23 +40,33 @@ Loader 仓库应提供明确、不可歧义的发行版本和机器可读的发�
 
 ## 兼容产物
 
-默认从同一个正式版本 commit 生成不同 Firefox 兼容产物。兼容范围写入
+默认从同一个正式版本 commit 生成 Firefox 兼容产物。兼容范围写入
 manifest 和归档文件名，不作为正式 release tag：
 
 ```text
 main
 compatibility: firefox-136-155
-compatibility: firefox-156-170
 ```
+
+兼容范围的唯一来源是构建脚本中的兼容通道配置表（例如 `scripts/build.mjs`
+中的 `COMPAT_CHANNELS`），ZIP 文件名、manifest 的 `compatibility` 与
+`firefox` 字段、版本索引条目都由它生成；本文档只描述格式，不含具体数字。
+
+**兼容范围必须互不重叠、首尾相接**（如 `136-155`、`156-170`、`171-`），
+每个 Firefox 主版本恰好命中一个产物。发布 workflow 应校验新增范围与已有
+范围不交叉，机器约束优先于人工约定。因此客户端只需按
+`minFirefox <= version <= maxFirefox` 选择唯一命中的产物，无需 tie-break
+规则；`maxFirefox: null` 表示无上限。
 
 只有在不同 Firefox 范围需要长期维护不同代码时，才建立兼容分支。若使用兼容分支，
 发布 workflow 必须明确为每个产物记录独立的 source revision；不能假设一个 Git tag
 同时指向多个分支。
 
-一个正式 Loader 版本可以同时发布多个兼容产物：
+当前 main 分支只有一份代码，首个正式版本只发布一个兼容产物即可；仅当不同
+范围需要不同代码（例如某个 Firefox 版本起 API 变化）时才扩展为多个产物：
 
 ```text
-v3.1.0
+v3.1.0（未来扩展为多产物时的形态）
   userchromejs-loader-3.1.0-firefox-136-155.zip
   userchromejs-loader-3.1.0-firefox-156-170.zip
 ```
@@ -110,17 +120,17 @@ v3.1.1
 }
 ```
 
-`files` 是 Loader 明确拥有的文件列表，而不是可递归覆盖的目录列表。更新时只替换
-当前和上一个 manifest 声明的文件，不覆盖用户自行添加的 `.uc.js` 脚本或其他 profile
-内容。安装器还必须拒绝绝对路径、`..` 路径、符号链接和清单外文件。
+`files` 是 Loader 明确拥有的文件列表，而不是可递归覆盖的目录列表。`files`
+中的路径是**安装到 profile/程序目录后的目标相对路径**，不是仓库中的源码路径
+（源码位于 `src/` 下，与部署路径不同，构建时由构建脚本完成映射）。更新时只
+替换当前和上一个 manifest 声明的文件，不覆盖用户自行添加的 `.uc.js` 脚本或
+其他 profile 内容。安装器还必须拒绝绝对路径、`..` 路径、符号链接和清单外文件。
 
-正式 Release 至少应提供：
+正式 Release 至少应提供（首个版本只有一个兼容产物）：
 
 ```text
 userchromejs-loader-3.1.0-firefox-136-155.zip
-userchromejs-loader-3.1.0-firefox-156-170.zip
 install-manifest-firefox-136-155.json
-install-manifest-firefox-156-170.json
 SHA256SUMS
 ```
 
@@ -140,22 +150,23 @@ version-nightly.json  # nightly，只有测试选项开启时读取
 
 稳定索引应只在正式 Release 完成后更新；Beta 和 Nightly 索引可以由各自的发布
 workflow 更新。索引提交必须与对应的 Release 版本和校验值一致，不能先发布索引
-再上传归档。为避免 CDN 缓存导致短时间读取旧内容，客户端应缓存索引并在版本更新
-检查时使用 `Cache-Control` 可接受的过期时间；发布 workflow 完成后可按 jsDelivr
-的缓存刷新机制主动刷新对应文件。
+再上传归档。索引经 CDN 分发，分支引用的缓存时间较长且不可控（镜像站通常没有
+可用的缓存刷新 API，"发布后主动刷新 CDN"不是可靠步骤）；因此客户端应缓存索引
+并按可接受的过期时间重新检查，且不能假设读到的索引一定是最新的——Nightly 依赖
+索引中的 `publishedAt` / `buildNumber` 判断新旧，正是为了容忍 CDN 陈旧。
 
-默认访问地址为：
+默认访问地址使用 jsDelivr 镜像站（保证中国大陆可访问），按以下顺序回退：
 
 ```text
-https://cdn.jsdelivr.net/gh/benzBrake/userChrome.js-Loader@main/version.json
-https://cdn.jsdelivr.net/gh/benzBrake/userChrome.js-Loader@main/version-beta.json
-https://cdn.jsdelivr.net/gh/benzBrake/userChrome.js-Loader@main/version-nightly.json
+https://cdn.jsdmirror.com/gh/benzBrake/userChrome.js-Loader@main/version.json        # 首选
+https://cdn.jsdelivr.net/gh/benzBrake/userChrome.js-Loader@main/version.json         # 回退 1
+https://raw.githubusercontent.com/benzBrake/userChrome.js-Loader/main/version.json    # 回退 2
 ```
 
-`@main` 是索引发布分支，不表示被安装的 Loader 构建来源；实际来源仍以索引中
-的 `revision` 和下载 URL 为准。客户端应校验索引的 JSON 格式、`product`、
-`releaseChannel` 和版本字段，并在 jsDelivr 暂时不可用时使用同一文件的 GitHub
-raw 地址作为回退。
+`version-beta.json`、`version-nightly.json` 使用同样的域名顺序。`@main`
+是索引发布分支，不表示被安装的 Loader 构建来源；实际来源仍以索引中的
+`revision` 和下载 URL 为准。客户端应校验索引的 JSON 格式、`product`、
+`releaseChannel` 和版本字段。
 
 `version.json` 的内容示例：
 
@@ -167,6 +178,7 @@ raw 地址作为回退。
   "version": "3.1.0",
   "revision": "ccbcc9e",
   "publishedAt": "2026-09-21T10:00:00Z",
+  "buildNumber": 1,
   "releases": [
     {
       "compatibility": "firefox-136-155",
@@ -181,7 +193,9 @@ raw 地址作为回退。
 }
 ```
 
-`archiveSha256` 是 ZIP 文件的 SHA-256；它不写入 ZIP 内的
+`buildNumber` 是单调递增的发布序号，用于 Nightly 新旧判断（Stable/Beta 也可
+携带，便于排查 CDN 陈旧索引）。`archiveSha256` 是 ZIP 文件的 SHA-256；它不写入
+ZIP 内的
 `install-manifest.json`，从而避免哈希自引用。安装清单可以包含各个 Loader 文件
 的哈希，但不能用自身内容计算并写回自身。
 
@@ -189,7 +203,7 @@ RunFirefox 的更新流程应为：
 
 1. 获取本地 Firefox 主版本。
 2. 从索引中选择匹配的兼容产物；范围按 `minFirefox <= version <= maxFirefox`
-   处理，`maxFirefox: null` 表示无上限，重叠时选择最窄且最高的范围。
+   处理，`maxFirefox: null` 表示无上限。兼容范围互不重叠，命中即唯一。
 3. 读取 profile 中保存的本地 Loader 版本、兼容范围和 revision。
 4. Stable/Beta 只有远端 SemVer 更高才进入更新确认；相同版本但 revision 不同视为
    发布异常。Nightly 必须比较远端 `publishedAt` 或单调递增的 `buildNumber`，不能把
@@ -236,7 +250,8 @@ chrome/.runfirefox-userchromejs.json
 
 1. 由正式 stable tag 触发；Beta 使用独立的 prerelease workflow，不能与 stable
    workflow 共用宽泛的 `v*.*.*` 匹配。
-2. 校验 tag 版本与 `package.json.version` 一致。
+2. 校验 tag 版本与 `package.json.version` 一致，并校验兼容通道配置中的范围
+   互不重叠。
 3. 对每个兼容通道执行构建和测试。
 4. 生成各通道 ZIP、manifest 和 `SHA256SUMS`。
 5. 创建 GitHub Release 并上传所有兼容产物和 `SHA256SUMS`。

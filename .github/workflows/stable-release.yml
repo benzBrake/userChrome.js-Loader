@@ -1,0 +1,109 @@
+name: Stable release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stable-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Stable release
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_CHANNEL: stable
+
+    steps:
+      - name: Reject prerelease tags
+        shell: bash
+        run: |
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "${GITHUB_REF_NAME} is not a stable tag; skipping."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tag matches package.json version
+        run: node --input-type=module -e '
+          const { version } = await (await import("node:fs/promises")).readFile("package.json", "utf8").then(JSON.parse);
+          if (process.env.GITHUB_REF_NAME !== `v${version}`) {
+            throw new Error(`tag ${process.env.GITHUB_REF_NAME} does not match package.json version ${version}`);
+          }'
+
+      - name: Check
+        run: npm run check
+
+      - name: Create archives
+        run: |
+          set -euo pipefail
+          version="$(node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version")"
+          shopt -s nullglob
+          cd dist
+          for manifest in install-manifest-firefox-*.json; do
+            compat="${manifest#install-manifest-}"
+            compat="${compat%.json}"
+            zip -r "userchromejs-loader-${version}-${compat}.zip" userChrome.js-Loader
+          done
+
+      - name: Generate SHA256SUMS
+        working-directory: dist
+        run: |
+          shopt -s nullglob
+          files=(userchromejs-loader-*.zip install-manifest-firefox-*.json)
+          sha256sum "${files[@]}" > SHA256SUMS
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          assets=(dist/userchromejs-loader-*.zip dist/install-manifest-firefox-*.json dist/SHA256SUMS)
+          gh release create "${GITHUB_REF_NAME}" "${assets[@]}" \
+              --title "${GITHUB_REF_NAME}" \
+              --notes "Stable release ${GITHUB_REF_NAME}. See install-manifest files for Firefox compatibility." \
+              --latest
+
+      - name: Verify release assets are downloadable
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for asset in $(gh release view "${GITHUB_REF_NAME}" --json assets --jq '.assets[].name'); do
+            gh release download "${GITHUB_REF_NAME}" --pattern "${asset}" --dir /tmp/verify
+          done
+
+      - name: Update version index
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          node scripts/update-version-index.mjs
+          cp version.json "${RUNNER_TEMP}/version.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout origin/main
+          cp "${RUNNER_TEMP}/version.json" version.json
+          git add version.json
+          git commit -m "chore(release): update stable version index for ${GITHUB_REF_NAME}"
+          git push origin HEAD:main
