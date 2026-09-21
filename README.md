@@ -16,9 +16,10 @@
 
 | 版本        | 说明                       | 地址                                                                        |
 | ----------- | -------------------------- | --------------------------------------------------------------------------- |
-| Nightly     | 最新开发版（推荐）         | [下载](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/nightly) |
-| Fx136–155   | Firefox 136–155 兼容版     | [下载](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/fx_136-155) |
-| Fx100+      | Firefox 100+ 最终版        | [下载](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/fx_100)  |
+| Stable 3.1.0 | 首个 SemVer 稳定版（即将发布） | — |
+| Nightly      | 最新开发版（测试用）          | [下载](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/nightly) |
+
+`fx_100` 和 `fx_136-155` 是旧的兼容范围命名，仅保留用于历史链接，不再作为当前版本入口。
 
 ### 使用说明
 
@@ -95,9 +96,10 @@ Versions after 20250219 are recommended for Firefox 135+.
 
 | Version    | Description                            | Link                                                                        |
 | ---------- | -------------------------------------- | --------------------------------------------------------------------------- |
-| Nightly    | Latest development build (recommended) | [Download](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/nightly) |
-| Fx136–155  | Firefox 136–155 compatible             | [Download](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/fx_136-155) |
-| Fx100+     | Final build for Firefox 100+           | [Download](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/fx_100)  |
+| Stable 3.1.0 | First SemVer stable release (upcoming) | — |
+| Nightly      | Latest development build (testing only) | [Download](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/nightly) |
+
+`fx_100` and `fx_136-155` are legacy compatibility names retained only for historical links; they are no longer current release entry points.
 
 ### Installation
 
