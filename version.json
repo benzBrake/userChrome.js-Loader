@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "product": "userChrome.js-Loader",
+  "releaseChannel": "stable",
+  "version": "3.1.0",
+  "revision": "8922c26",
+  "publishedAt": "2026-09-21T16:14:34.362Z",
+  "buildNumber": 1,
+  "releases": [
+    {
+      "compatibility": "firefox-136-155",
+      "minFirefox": 136,
+      "maxFirefox": 155,
+      "revision": "8922c26",
+      "url": "https://github.com/benzBrake/userChrome.js-Loader/releases/download/v3.1.0/userchromejs-loader-3.1.0-firefox-136-155.zip",
+      "manifestUrl": "https://github.com/benzBrake/userChrome.js-Loader/releases/download/v3.1.0/install-manifest-firefox-136-155.json",
+      "archiveSha256": "7d01fefc8f6446b834cba8c6fa356adb5f4e02e6effae5a5f45ac7b90e03b37c"
+    }
+  ]
+}
