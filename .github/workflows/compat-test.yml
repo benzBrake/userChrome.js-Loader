@@ -1,0 +1,82 @@
+name: Compatibility test
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "scripts/**"
+      - ".node-version"
+      - "eslint.config.js"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/compat-test.yml"
+  workflow_dispatch:
+    inputs:
+      firefox-version:
+        description: "Firefox 版本；留空跑默认矩阵。支持精确版本号（如 157.0）或 latest / latest-esr / latest-beta / latest-nightly"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compat-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  firefox:
+    name: Firefox ${{ matrix.firefox-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 手动指定版本时只测该版本；否则测声明下限、声明上限与当前 stable（前瞻）
+        firefox-version: ${{ (github.event_name == 'workflow_dispatch' && inputs.firefox-version != '' && fromJSON(format('["{0}"]', inputs.firefox-version))) || fromJSON('["136.0", "155.0", "latest"]') }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Set up Firefox
+        id: setup
+        uses: browser-actions/setup-firefox@v1
+        with:
+          firefox-version: ${{ matrix.firefox-version }}
+
+      - name: Show Firefox version
+        run: firefox --version
+
+      - name: Run compatibility test
+        env:
+          # 让脚本的临时 profile 与日志落在 runner.temp 下，便于失败时收集
+          TMPDIR: ${{ runner.temp }}
+        run: |
+          xvfb-run -a node scripts/compat-test.mjs \
+            --firefox "$(command -v firefox)" \
+            --label "${{ steps.setup.outputs.firefox-version }}" \
+            --keep-profile
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compat-diagnostics-${{ matrix.firefox-version }}
+          path: ${{ runner.temp }}/ucjs-compat-*
+          if-no-files-found: warn
+          retention-days: 7

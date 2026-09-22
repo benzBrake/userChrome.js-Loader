@@ -67,6 +67,16 @@ export default [
     },
   },
   {
+    files: ["tests/fixtures/**/*.uc.js"],
+    ...js.configs.recommended,
+    languageOptions: {
+      ecmaVersion: "latest",
+      globals: { ...firefoxGlobals, userChrome_js: "readonly" },
+      sourceType: "script",
+    },
+    rules: sourceRules,
+  },
+  {
     files: ["src/profile/chrome/userChrome.js"],
     languageOptions: {
       globals: {
