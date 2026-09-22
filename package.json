@@ -11,7 +11,8 @@
     "check": "npm run lint && npm test && npm run build",
     "lint": "eslint src scripts tests eslint.config.js --max-warnings 0",
     "prepare": "simple-git-hooks",
-    "test": "node --test"
+    "test": "node --test \"tests/**/*.test.mjs\"",
+    "test:compat": "node scripts/compat-test.mjs"
   },
   "simple-git-hooks": {
     "pre-commit": "npm run lint"

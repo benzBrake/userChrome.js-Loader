@@ -55,6 +55,16 @@ npm run check
 
 `npm install` 会安装提交前 lint hook。`npm run check` 会依次执行 lint、测试和构建，并将可发布目录生成到 `dist/userChrome.js-Loader/`。
 
+#### 兼容性测试
+
+`Compatibility test` workflow 会在 GitHub Actions 上安装真实 Firefox、部署 loader 并运行金丝雀脚本做端到端验证。对 `main` 发起的 PR 自动测试声明范围下限、上限和当前 stable 版本；也可在 Actions 页面手动触发，并用 `firefox-version` 输入指定任意版本（如 `157.0`、`latest-nightly`），便于新版本兼容测试。
+
+本地可对独立安装的 Firefox 运行同一测试入口（勿指向日常使用的实例）：
+
+```bash
+npm run test:compat -- --firefox <path-to-firefox>
+```
+
 ### 兼容的脚本
 
 | 序号 | 地址                                                                   | 程度 |
@@ -134,6 +144,16 @@ npm run check
 ```
 
 `npm install` installs the pre-commit lint hook. `npm run check` runs lint, tests, and the build, producing the distributable directory at `dist/userChrome.js-Loader/`.
+
+#### Compatibility testing
+
+The `Compatibility test` workflow installs a real Firefox on GitHub Actions, deploys the loader, and runs a canary script for end-to-end verification. Pull requests against `main` automatically test the declared minimum, declared maximum, and current stable versions. You can also trigger it manually from the Actions tab and pass any version via the `firefox-version` input (e.g. `157.0`, `latest-nightly`), which is handy for testing upcoming Firefox releases.
+
+The same entry point can be run locally against a standalone Firefox installation (never point it at your daily-use instance):
+
+```bash
+npm run test:compat -- --firefox <path-to-firefox>
+```
 
 ### Compatible Scripts
 
