@@ -27,28 +27,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  release:
-    name: Nightly prerelease
+  check-current:
+    name: Check whether Nightly is current
     runs-on: ubuntu-24.04
+    outputs:
+      publish: ${{ steps.nightly.outputs.publish }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .node-version
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Check
-        run: npm run check
-        env:
-          RELEASE_CHANNEL: nightly
-
       - name: Check whether Nightly is current
         id: nightly
         shell: bash
@@ -69,16 +54,91 @@ jobs:
               echo "publish=true" >> "${GITHUB_OUTPUT}"
           fi
 
+  compat:
+    name: Firefox latest-nightly
+    needs: check-current
+    if: needs.check-current.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    outputs:
+      firefox-version: ${{ steps.setup.outputs.firefox-version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Set up Firefox
+        id: setup
+        uses: browser-actions/setup-firefox@v1
+        with:
+          firefox-version: latest-nightly
+
+      - name: Show Firefox version
+        run: firefox --version
+
+      - name: Run compatibility test
+        env:
+          # 让脚本的临时 profile 与日志落在 runner.temp 下，便于失败时收集
+          TMPDIR: ${{ runner.temp }}
+        run: |
+          xvfb-run -a node scripts/compat-test.mjs \
+            --firefox "$(command -v firefox)" \
+            --label "${{ steps.setup.outputs.firefox-version }}" \
+            --keep-profile
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-compat-diagnostics
+          path: ${{ runner.temp }}/ucjs-compat-*
+          if-no-files-found: warn
+          retention-days: 7
+
+  release:
+    name: Nightly prerelease
+    needs: [check-current, compat]
+    if: needs.check-current.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check
+        run: npm run check
+        env:
+          RELEASE_CHANNEL: nightly
+
       - name: Create archive
-        if: steps.nightly.outputs.publish == 'true'
         working-directory: dist
         run: zip -r userChrome.js-Loader-nightly.zip userChrome.js-Loader
 
       - name: Publish prerelease
-        if: steps.nightly.outputs.publish == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          FIREFOX_VERSION: ${{ needs.compat.outputs.firefox-version }}
         run: |
           set -euo pipefail
 
@@ -94,6 +154,7 @@ jobs:
 
           Branch: ${GITHUB_REF_NAME}
           Workflow: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          Compatibility verified against Firefox ${FIREFOX_VERSION} (latest-nightly).
           EOF
 
           if gh release view "${tag_name}" > /dev/null 2>&1; then
