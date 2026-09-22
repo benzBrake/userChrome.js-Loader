@@ -2,19 +2,19 @@
   "schemaVersion": 1,
   "product": "userChrome.js-Loader",
   "releaseChannel": "stable",
-  "version": "3.1.0",
-  "revision": "8922c26",
-  "publishedAt": "2026-09-21T16:14:34.362Z",
-  "buildNumber": 1,
+  "version": "3.1.1",
+  "revision": "18d5103",
+  "publishedAt": "2026-09-22T09:34:41.997Z",
+  "buildNumber": 2,
   "releases": [
     {
-      "compatibility": "firefox-136-155",
+      "compatibility": "firefox-136-156",
       "minFirefox": 136,
-      "maxFirefox": 155,
-      "revision": "8922c26",
-      "url": "https://github.com/benzBrake/userChrome.js-Loader/releases/download/v3.1.0/userchromejs-loader-3.1.0-firefox-136-155.zip",
-      "manifestUrl": "https://github.com/benzBrake/userChrome.js-Loader/releases/download/v3.1.0/install-manifest-firefox-136-155.json",
-      "archiveSha256": "7d01fefc8f6446b834cba8c6fa356adb5f4e02e6effae5a5f45ac7b90e03b37c"
+      "maxFirefox": 156,
+      "revision": "18d5103",
+      "url": "https://github.com/benzBrake/userChrome.js-Loader/releases/download/v3.1.1/userchromejs-loader-3.1.1-firefox-136-156.zip",
+      "manifestUrl": "https://github.com/benzBrake/userChrome.js-Loader/releases/download/v3.1.1/install-manifest-firefox-136-156.json",
+      "archiveSha256": "560399be2851cfe24cd6dcf4699db1b6756bc13171139b2bd61ea2f30df77bb9"
     }
   ]
 }
