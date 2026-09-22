@@ -16,7 +16,7 @@
 
 | 版本        | 说明                       | 地址                                                                        |
 | ----------- | -------------------------- | --------------------------------------------------------------------------- |
-| Stable 3.1.0 | 首个 SemVer 稳定版（即将发布） | — |
+| Stable 3.1.1 | 首个 SemVer 稳定版 | [下载](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/v3.1.1) |
 | Nightly      | 最新开发版（测试用）          | [下载](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/nightly) |
 
 `fx_100` 和 `fx_136-155` 是旧的兼容范围命名，仅保留用于历史链接，不再作为当前版本入口。
@@ -106,7 +106,7 @@ Versions after 20250219 are recommended for Firefox 135+.
 
 | Version    | Description                            | Link                                                                        |
 | ---------- | -------------------------------------- | --------------------------------------------------------------------------- |
-| Stable 3.1.0 | First SemVer stable release (upcoming) | — |
+| Stable 3.1.1 | First SemVer stable release | [Download](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/v3.1.1) |
 | Nightly      | Latest development build (testing only) | [Download](https://github.com/benzBrake/userChrome.js-Loader/releases/tag/nightly) |
 
 `fx_100` and `fx_136-155` are legacy compatibility names retained only for historical links; they are no longer current release entry points.
