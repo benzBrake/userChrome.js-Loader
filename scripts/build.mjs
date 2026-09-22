@@ -9,7 +9,7 @@ const packageDirectory = join(distDirectory, "userChrome.js-Loader");
 
 // 兼容范围的唯一来源；发布产物命名、manifest 与版本索引均由此生成。
 const COMPAT_CHANNELS = [
-  { compatibility: "firefox-136-155", minFirefox: 136, maxFirefox: 155 },
+  { compatibility: "firefox-136-156", minFirefox: 136, maxFirefox: 156 },
 ];
 
 const installRoots = ["program", "profile"];
