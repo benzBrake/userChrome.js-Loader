@@ -40,53 +40,48 @@ function getOptionsDialogFeatures(addon) {
   return features;
 }
 
-Services.obs.addObserver(doc => {
-  if (doc.location.protocol + doc.location.pathname === 'about:addons' ||
-      doc.location.protocol + doc.location.pathname === 'chrome:/content/extensions/aboutaddons.html') {
-    const win = doc.defaultView;
-    let handleEvent_orig = win.customElements.get('addon-card').prototype.handleEvent;
-    win.customElements.get('addon-card').prototype.handleEvent = function (e) {
-      if (e.type === 'click' &&
-          e.target.getAttribute('action') === 'preferences' &&
-          isDialogOptionsAddon(this.addon)) {
-        var windows = Services.wm.getEnumerator(null);
-        while (windows.hasMoreElements()) {
-          var win2 = windows.getNext();
-          if (win2.closed) {
-            continue;
+function initAddonsPageObserver() {
+  Services.obs.addObserver(doc => {
+    if (doc.location.protocol + doc.location.pathname === 'about:addons' ||
+        doc.location.protocol + doc.location.pathname === 'chrome:/content/extensions/aboutaddons.html') {
+      const win = doc.defaultView;
+      let handleEvent_orig = win.customElements.get('addon-card').prototype.handleEvent;
+      win.customElements.get('addon-card').prototype.handleEvent = function (e) {
+        if (e.type === 'click' &&
+            e.target.getAttribute('action') === 'preferences' &&
+            isDialogOptionsAddon(this.addon)) {
+          var windows = Services.wm.getEnumerator(null);
+          while (windows.hasMoreElements()) {
+            var win2 = windows.getNext();
+            if (win2.closed) {
+              continue;
+            }
+            if (win2.document.documentURI == this.addon.optionsURL) {
+              win2.focus();
+              return;
+            }
           }
-          if (win2.document.documentURI == this.addon.optionsURL) {
-            win2.focus();
-            return;
-          }
+          var features = getOptionsDialogFeatures(this.addon);
+          win.docShell.rootTreeItem.domWindow.openDialog(this.addon.optionsURL, this.addon.id, features);
+        } else {
+          handleEvent_orig.apply(this, arguments);
         }
-        var features = getOptionsDialogFeatures(this.addon);
-        win.docShell.rootTreeItem.domWindow.openDialog(this.addon.optionsURL, this.addon.id, features);
-      } else {
-        handleEvent_orig.apply(this, arguments);
+      }
+      let update_orig = win.customElements.get('addon-options').prototype.update;
+      win.customElements.get('addon-options').prototype.update = function (card, addon) {
+        update_orig.apply(this, arguments);
+        if (isDialogOptionsAddon(addon))
+          this.querySelector('panel-item[data-l10n-id="preferences-addon-button"]').hidden = false;
       }
     }
-    let update_orig = win.customElements.get('addon-options').prototype.update;
-    win.customElements.get('addon-options').prototype.update = function (card, addon) {
-      update_orig.apply(this, arguments);
-      if (isDialogOptionsAddon(addon))
-        this.querySelector('panel-item[data-l10n-id="preferences-addon-button"]').hidden = false;
-    }
-  }
-}, 'chrome-document-loaded');
+  }, 'chrome-document-loaded');
+}
 
-const {AddonManager} = ChromeUtils.importESModule('resource://gre/modules/AddonManager.sys.mjs');
+const {AddonManager, AddonManagerPrivate} = ChromeUtils.importESModule(
+  'resource://gre/modules/AddonManager.sys.mjs'
+);
 const {XPIDatabase, AddonInternal} = ChromeUtils.importESModule('resource://gre/modules/addons/XPIDatabase.sys.mjs');
 const {XPIExports} = ChromeUtils.importESModule('resource://gre/modules/addons/XPIExports.sys.mjs')
-
-XPIDatabase.isDisabledLegacy = () => false;
-
-var orig_verifyBundleSignedState = XPIExports.verifyBundleSignedState;
-XPIExports.verifyBundleSignedState = async (aBundle, aAddon) => {
-  if(!aAddon.isWebExtension && aAddon.type === 'extension' || aAddon.id.includes('_N_SIGN_'))
-    return { signedState: undefined, signedTypes: [] };
-  return orig_verifyBundleSignedState(aBundle, aAddon);
-}
 
 ChromeUtils.defineLazyGetter(this, 'BOOTSTRAP_REASONS', () => {
   const {XPIProvider} = ChromeUtils.importESModule('resource://gre/modules/addons/XPIProvider.sys.mjs');
@@ -103,6 +98,34 @@ ChromeUtils.defineLazyGetter(this, "logger", () => {
   };
   return new ConsoleAPI(consoleOptions);
 });
+
+/**
+ * Detect a legacy-extension loader already supplied by the browser or by an
+ * earlier evaluation of this file. Waterfox ships its own implementation;
+ * the registry check also covers rebranded forks and duplicate evaluations.
+ */
+function bootstrapLoaderBundled() {
+  if (/waterfox/i.test(Services.appinfo?.name || '')) {
+    return true;
+  }
+  try {
+    const registry = AddonManagerPrivate?.externalExtensionLoaders;
+    if (!registry) {
+      return false;
+    }
+    if (registry.get?.('bootstrap')) {
+      return true;
+    }
+    for (const loader of registry.values?.() || []) {
+      if (loader?.manifestFile === 'install.rdf') {
+        return true;
+      }
+    }
+  } catch {
+    // Older Gecko builds may not expose the registry; brand detection remains.
+  }
+  return false;
+}
 
 /**
  * Valid IDs fit this pattern.
@@ -625,14 +648,37 @@ var BootstrapLoader = {
   },
 };
 
-AddonManager.addExternalExtensionLoader(BootstrapLoader);
+/**
+ * Keep all browser mutations in one guarded entry point. This makes a second
+ * evaluation of the loader inert instead of duplicating observers, patches,
+ * and the external extension loader registration.
+ */
+function initBootstrapLoader() {
+  initAddonsPageObserver();
 
-if (AddonManager.isReady) {
-  AddonManager.getAllAddons().then(addons => {
-    addons.forEach(addon => {
-      if (addon.type == 'extension' && !addon.isWebExtension && !addon.userDisabled) {
-        addon.reload();
-      };
+  XPIDatabase.isDisabledLegacy = () => false;
+
+  const origVerifyBundleSignedState = XPIExports.verifyBundleSignedState;
+  XPIExports.verifyBundleSignedState = async (aBundle, aAddon) => {
+    if ((!aAddon.isWebExtension && aAddon.type === 'extension') || aAddon.id.includes('_N_SIGN_')) {
+      return {signedState: undefined, signedTypes: []};
+    }
+    return origVerifyBundleSignedState(aBundle, aAddon);
+  };
+
+  AddonManager.addExternalExtensionLoader(BootstrapLoader);
+
+  if (AddonManager.isReady) {
+    AddonManager.getAllAddons().then(addons => {
+      addons.forEach(addon => {
+        if (addon.type == 'extension' && !addon.isWebExtension && !addon.userDisabled) {
+          addon.reload();
+        }
+      });
     });
-  });
+  }
+}
+
+if (!bootstrapLoaderBundled()) {
+  initBootstrapLoader();
 }
