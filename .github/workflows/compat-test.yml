@@ -35,7 +35,7 @@ jobs:
       fail-fast: false
       matrix:
         # 手动指定版本时只测该版本；否则测声明下限、声明上限与当前 stable（前瞻）
-        firefox-version: ${{ (github.event_name == 'workflow_dispatch' && inputs.firefox-version != '' && fromJSON(format('["{0}"]', inputs.firefox-version))) || fromJSON('["136.0", "155.0", "latest"]') }}
+        firefox-version: ${{ (github.event_name == 'workflow_dispatch' && inputs.firefox-version != '' && fromJSON(format('["{0}"]', inputs.firefox-version))) || fromJSON('["136.0", "157.0", "latest"]') }}
 
     steps:
       - name: Checkout

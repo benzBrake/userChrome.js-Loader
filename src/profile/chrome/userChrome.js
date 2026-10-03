@@ -9,7 +9,7 @@
 // scripts without metadata will run only on the main browser window, for backwards compatibility
 //
 // 1.Including function of UCJS_loader. <--- not work in Firefox135+
-// 2.Compatible with Firefox141
+// 2.Compatible with Firefox157
 // 3.Cached script data (path, leafname, regex)
 // 4.Support window.userChrome_js.loadOverlay(overlay [,observer]) <--- not work in recent Firefox
 // Modified by Alice0775
