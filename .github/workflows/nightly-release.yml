@@ -34,6 +34,9 @@ jobs:
       publish: ${{ steps.nightly.outputs.publish }}
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
       - name: Check whether Nightly is current
         id: nightly
         shell: bash
