@@ -5,11 +5,13 @@
 // @include         main
 // @charset         utf-8
 // @compatibility   Firefox 135+
-// @version         2026.08.10
+// @version         2026.10.15
 // @downloadURL     https://raw.github.com/ywzhaiqi/userChromeJS/master/AddonsPage/AddonsPage.uc.js
 // @homepageURL     https://github.com/ywzhaiqi/userChromeJS/tree/master/AddonsPage
 // @reviewURL       http://bbs.kafan.cn/thread-1617407-1-1.html
 // @optionsURL      about:config?filter=view_source.editor.path
+// @note            2026-10-15 Hide enable/disable controls and permissions for @skip scripts
+// @note            2026-10-16 Use global theme-aware colors for enabled controls
 // @note            2026.08.10 Use userChrome.js lifecycle API for restartless script enable/disable
 // @note            2026.07.26 Fix extension version and update date text rendering, add version and update date to extension list item
 // @note            2026.07.25 Fx153 fix about:addons category navigation component migration
@@ -1051,7 +1053,8 @@
             if (!header) return;
             doc.querySelectorAll("addon-card").forEach(card => {
                 const addon = card.addon;
-                if (addon.type === "userchromejs") {
+                if (addon.type === "userchromejs" &&
+                    (addon.permissions & (AddonManager.PERM_CAN_ENABLE | AddonManager.PERM_CAN_DISABLE))) {
                     // 有効・無効スイッチを追加
 
                     const input = $C(doc, "input", {
@@ -2334,21 +2337,21 @@
                         border-color: var(--border-color);
                     }
                     input[type="checkbox"].toggle-button:checked {
-                        background: var(--in-content-primary-button-background);
-                        border-color: var(--in-content-primary-button-background-hover);
+                        background: var(--color-accent-primary, var(--in-content-primary-button-background));
+                        border-color: var(--border-color-interactive, var(--in-content-primary-button-background-hover));
                     }
                     input[type="checkbox"].toggle-button:checked:hover {
-                        background: var(--in-content-primary-button-background-hover);
-                        border-color: var(--in-content-primary-button-background-active);
+                        background: var(--color-accent-primary-hover, var(--in-content-primary-button-background-hover));
+                        border-color: var(--border-color-interactive-hover, var(--in-content-primary-button-background-active));
                     }
                     input[type="checkbox"].toggle-button:checked:active {
-                        background: var(--in-content-primary-button-background-active);
-                        border-color: var(--in-content-primary-button-background-active);
+                        background: var(--color-accent-primary-active, var(--in-content-primary-button-background-active));
+                        border-color: var(--border-color-interactive-active, var(--in-content-primary-button-background-active));
                     }
                     input[type="checkbox"].toggle-button::before {
                         display: block;
                         content: "";
-                        background: #fff;
+                        background: var(--border-color-interactive, var(--border-color));
                         height: var(--dot-size);
                         width: var(--dot-size);
                         margin: var(--dot-margin);
@@ -2358,6 +2361,7 @@
                         transform: translate(0, calc(50% - var(--dot-size) / 2));
                     }
                     input[type="checkbox"].toggle-button:checked::before {
+                        background: var(--background-color-canvas, Canvas);
                         transform: translate(var(--dot-transform-x), calc(50% - var(--dot-size) / 2));
                     }
                     input[type="checkbox"].toggle-button:-moz-locale-dir(rtl)::before,
@@ -2572,6 +2576,9 @@
             AddonManagerPrivate.callAddonListeners(val ? 'onEnabled' : 'onDisabled', this);
         },
         get permissions () {
+            if (this._script.skip) {
+                return 0;
+            }
             // var perms = AddonManager.PERM_CAN_UNINSTALL;
             // perms |= this.userDisabled ? AddonManager.PERM_CAN_ENABLE : AddonManager.PERM_CAN_DISABLE;
             var perms = this.userDisabled ? AddonManager.PERM_CAN_ENABLE : AddonManager.PERM_CAN_DISABLE;
