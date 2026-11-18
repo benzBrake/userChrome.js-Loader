@@ -1605,7 +1605,6 @@
                     break;
                 case "userchromejs":
                     pushRow("path", "路径", pluginPath, true);
-                    pushRow("version", "版本", aAddon.version);
                     pushRow("author", "作者", aAddon.author);
                     pushRow("note", "备注", this.getNoteValue(aAddon));
                     pushRow("review", "评论页面", aAddon.reviewURL, true);
@@ -1625,29 +1624,25 @@
             const row = $C(doc, "div", {
                 id: `detail-${rowInfo.id}-row`,
                 class: "addon-detail-row userchromejs-detail-row",
-                style: "display: flex; align-items: flex-start; gap: 12px;",
             });
             $C(doc, "label", {
                 class: "detail-row-label",
-                style: "flex: 0 0 88px; min-width: 88px; margin: 0; text-align: left;",
                 "#text": rowInfo.label
             }, row);
             const valueBox = $C(doc, "div", {
                 class: "userchromejs-detail-value",
-                style: "flex: 1 1 auto; min-width: 0;",
             }, row);
 
             if (rowInfo.isLink) {
                 const link = $C(doc, "a", {
                     href: rowInfo.value,
                     action: "AM-open-url",
-                    style: "display: block; text-align: left; overflow-wrap: anywhere; word-break: break-word;",
                     "#text": rowInfo.value
                 }, valueBox);
                 link.addEventListener("click", this);
             } else {
                 $C(doc, "span", {
-                    style: `display: block; text-align: left; overflow-wrap: anywhere; word-break: break-word;${rowInfo.value.includes("\n") ? " white-space: pre-wrap;" : ""}`,
+                    style: rowInfo.value.includes("\n") ? "white-space: pre-wrap;" : "",
                     "#text": rowInfo.value
                 }, valueBox);
             }
@@ -1707,6 +1702,17 @@
             }
 
             doc[DETAIL_RENDERING_KEY] = true;
+            section.querySelectorAll(".addon-detail-row-version").forEach(row => {
+                Array.from(row.childNodes).forEach(node => {
+                    if (node.nodeType === 3 && node.textContent.trim()) {
+                        const span = $C(doc, "span", {
+                            class: "addon-detail-row-version-text",
+                        });
+                        node.replaceWith(span);
+                        span.appendChild(node);
+                    }
+                });
+            });
             section.querySelectorAll(".userchromejs-detail-row").forEach(node => node.remove());
 
             const rows = this.getDetailRows(addon);
@@ -2432,70 +2438,68 @@
                     html|*.category[name="stylus"] {
                         background-image: url(chrome://mozapps/skin/extensions/category-extensions.svg);
                     }
-                    .userchromejs-detail-row {
-                        display: flex;
-                        align-items: flex-start;
-                        gap: 12px;
-                    }
-                    .userchromejs-detail-row > .detail-row-label {
-                        flex: 0 0 128px;
-                        min-width: 128px;
-                        margin: 0;
-                        text-align: left;
-                        whitespace: nowrap;
-                    }
-                    .userchromejs-detail-value {
-                        flex: 1 1 auto;
-                        min-width: 0;
-                    }
-                    .userchromejs-detail-value > a,
-                    .userchromejs-detail-value > span {
-                        display: block;
-                        text-align: left;
-                        overflow-wrap: anywhere;
-                        word-break: break-word;
-                    }
-                    .addon-detail-row-homepage {
+                    html|*#details-deck html|*:is(
+                        html|*.userchromejs-detail-row,
+                        html|*.addon-detail-row-version,
+                        html|*.addon-detail-row-homepage
+                    ) {
+                        display: flex !important;
+                        flex-flow: row wrap !important;
                         justify-content: flex-start !important;
                         align-items: flex-start !important;
                         gap: 12px !important;
                     }
-                    .addon-detail-row-homepage > label {
-                        flex: 0 0 88px !important;
-                        min-width: 88px !important;
+                    html|*#details-deck html|*:is(
+                        html|*.userchromejs-detail-row,
+                        html|*.addon-detail-row-version,
+                        html|*.addon-detail-row-homepage
+                    ) > html|label {
+                        box-sizing: border-box !important;
+                        flex: 0 0 80px !important;
+                        min-width: 80px !important;
+                        max-width: 80px !important;
                         margin: 0 !important;
                         text-align: left !important;
+                        white-space: nowrap !important;
                     }
-                    .addon-detail-row-homepage > a {
+                    html|*#details-deck html|*:is(
+                        html|*.userchromejs-detail-row,
+                        html|*.addon-detail-row-version,
+                        html|*.addon-detail-row-homepage
+                    ) > html|*:not(html|label) {
                         display: block !important;
-                        flex: 1 1 auto !important;
+                        flex: 1 1 0 !important;
                         min-width: 0 !important;
+                        margin-inline: 0 !important;
                         text-align: left !important;
                         overflow-wrap: anywhere !important;
                         word-break: break-word !important;
                     }
-                    .tampermonkey-dashboard-view {
+                    html|*#details-deck html|*.userchromejs-detail-value > html|*:is(html|a, html|span) {
+                        display: block;
+                    }
+                    html|*.tampermonkey-dashboard-view {
                         display: flex;
                         flex-direction: column;
                         gap: 16px;
                         min-height: calc(100vh - 190px);
                     }
-                    .tampermonkey-dashboard-header {
+                    html|*.tampermonkey-dashboard-header {
                         display: flex;
                         flex-direction: column;
                         gap: 4px;
                     }
-                    .tampermonkey-dashboard-title {
+                    html|*.tampermonkey-dashboard-title {
                         margin: 0;
                     }
-                    .tampermonkey-dashboard-subtitle {
+                    html|*.tampermonkey-dashboard-subtitle {
                         margin: 0;
                         color: var(--in-content-deemphasized-text);
                     }
-                    .tampermonkey-dashboard-message {
+                    html|*.tampermonkey-dashboard-message {
                         margin: 0;
                     }
-                    .tampermonkey-dashboard-link {
+                    html|*.tampermonkey-dashboard-link {
                         display: block;
                         overflow-wrap: anywhere;
                         word-break: break-word;
