@@ -7,12 +7,14 @@
 // @compatibility   Firefox 136+
 // @version         1.0
 // @onlyonce
+// @pref {"key":"userChrome.compatCanary.enabled","type":"bool","label":{"default":"Enabled","zh-CN":"启用"}}
 // ==/UserScript==
 (function () {
     "use strict";
 
     // 仅用于 scripts/compat-test.mjs 端到端验证；标记文件内容即测试断言依据。
     const loader = window.userChrome_js;
+    const script = loader?.scripts.find(item => item.filename === "CompatCanary.uc.js");
     const marker = {
         marker: "userchromejs-compat-test",
         appName: Services.appinfo.name,
@@ -20,6 +22,8 @@
         platformVersion: Services.appinfo.platformVersion,
         hasLoaderGlobal: "userChrome_js" in window,
         scriptCount: Array.isArray(loader?.scripts) ? loader.scripts.length : null,
+        hasPreferenceMetadata: script?.options?.[0]?.key === "userChrome.compatCanary.enabled" &&
+            script.options[0].type === "bool" && script.optionErrors.length === 0,
         loadedAt: new Date().toISOString(),
     };
 

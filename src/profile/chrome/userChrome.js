@@ -121,6 +121,7 @@
         registerScript: registerRuntimeScript,
         setWindowSandbox,
     } = ChromeUtils.importESModule("chrome://userchromejs/content/utils/UcScriptRuntime.sys.mjs");
+    const { parseOptions } = ChromeUtils.importESModule("chrome://userchromejs/content/utils/UcScriptOptions.sys.mjs");
     const lazy = {}
     ChromeUtils.defineLazyGetter(lazy, "console", () => console.createInstance({
         prefix: "userChrome.js"
@@ -392,6 +393,7 @@
                     updateURL: extractSingleMeta(header, /\/\/ @updateURL\s+(.+)\s*$/im),
                     reviewURL: extractSingleMeta(header, /\/\/ @reviewURL\s+(.+)\s*$/im),
                     optionsURL: extractSingleMeta(header, /\/\/ @optionsURL\s+(.+)\s*$/im),
+                    ...parseOptions(header),
                     startup: extractSingleMeta(header, /\/\/ @startup\s+(.+)\s*$/im),
                     shutdown: extractSingleMeta(header, /\/\/ @shutdown\s+(.+)\s*$/im),
                     license: extractSingleMeta(header, /\/\/ @license\s+(.+)\s*$/im),

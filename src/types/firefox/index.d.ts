@@ -152,6 +152,11 @@ interface nsIFileOutputStream extends nsISupports {
   close(): void;
 }
 
+interface BrowsingContext {
+  readonly parent: BrowsingContext | null;
+  readonly top: BrowsingContext;
+}
+
 interface nsIFilePicker extends nsISupports {
   modeOpen: number;
   modeSave: number;
@@ -171,7 +176,7 @@ interface nsIFilePicker extends nsISupports {
   displayDirectory: nsIFile | null;
   defaultString: string;
   defaultExtension: string;
-  init(parent: Window | null, title: string, mode: number): void;
+  init(parent: BrowsingContext, title: string, mode: number): void;
   appendFilter(title: string, filter: string): void;
   appendFilters(filterMask: number): void;
   open(callback: (result: number) => void): void;
@@ -246,6 +251,10 @@ interface nsIWebProgressListener extends nsISupports {
     location: nsIURI | null,
     flags: number,
   ): void;
+}
+
+interface nsIPrefLocalizedString extends nsISupports {
+  data: string;
 }
 
 interface nsIPrefBranch extends nsISupports {
@@ -487,6 +496,7 @@ interface ComponentsInterfaces {
   [interfaceName: string]: nsIID<nsISupports> & object;
   nsIFile: nsIFileIID;
   nsIPrefBranch: nsIPrefBranchIID;
+  nsIPrefLocalizedString: nsIID<nsIPrefLocalizedString>;
   nsIURI: nsIID<nsIURI>;
   nsIIOService: nsIID<nsIIOService>;
   nsIWindowMediator: nsIID<nsIWindowMediator>;

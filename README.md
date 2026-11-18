@@ -43,6 +43,7 @@
 | ---- | ---- |
 | [GUIDE.md](./GUIDE.md) | 脚本编写指南（中文） |
 | [GUIDE-en_US.md](./GUIDE-en_US.md) | Script Authoring Guide (English) |
+| [docs/pref-design.md](./docs/pref-design.md) | 脚本选项、pref 声明与文件选择器设计 |
 
 ### 参与开发
 

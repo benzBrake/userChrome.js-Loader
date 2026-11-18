@@ -254,6 +254,9 @@ async function main() {
     if (marker.hasLoaderGlobal !== true) {
       throw new Error("窗口缺少 userChrome_js 全局对象，loader 未正确注入");
     }
+    if (marker.hasPreferenceMetadata !== true) {
+      throw new Error("Loader 未正确收集 @pref 元数据");
+    }
     if (marker.version !== label) {
       console.warn(`警告: 标记文件版本 ${marker.version} 与标签 ${label} 不一致`);
     }

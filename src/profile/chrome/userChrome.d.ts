@@ -10,6 +10,44 @@ type UserChromeExecutionMode =
 /** Per-event options collected from `@actor:events` or `@content:events`. */
 type UserChromeActorEvents = Record<string, WindowActorEventListenerOptions>;
 
+/** Literal fallback text with optional BCP 47 translations. */
+type UserChromeOptionText = string | { default: string; [locale: string]: string };
+
+interface UserChromeOptionBase {
+  key: string;
+  label?: UserChromeOptionText;
+  description?: UserChromeOptionText;
+  group?: UserChromeOptionText;
+}
+
+interface UserChromePathOptions {
+  base: "UChrm" | "ProfD" | "script";
+  format: "relative" | "absolute" | "prefer-relative";
+}
+
+interface UserChromeFilePickerOptions {
+  mode?: "open" | "folder";
+  filters?: { label?: UserChromeOptionText; pattern: string }[];
+}
+
+/** One JSON object per @pref line; complex nsIFile always stores absolute paths. */
+type UserChromeOption = UserChromeOptionBase & (
+  | { type: "bool"; fallback?: boolean }
+  | { type: "number"; fallback?: number; min?: number; max?: number }
+  | { type: "string"; fallback?: string; path?: UserChromePathOptions;
+      control?: "filepicker"; picker?: UserChromeFilePickerOptions }
+  | { type: "enum"; valueType: "string"; fallback?: string;
+      choices: { value: string; label?: UserChromeOptionText }[] }
+  | { type: "enum"; valueType: "number"; fallback?: number;
+      choices: { value: number; label?: UserChromeOptionText }[] }
+  | { type: "enum"; valueType: "bool"; fallback?: boolean;
+      choices: { value: boolean; label?: UserChromeOptionText }[] }
+  | { type: "complex"; interface: "nsIFile"; fallback?: string;
+      path?: Omit<UserChromePathOptions, "format"> & { format: "absolute" };
+      control?: "filepicker"; picker?: UserChromeFilePickerOptions }
+  | { type: "complex"; interface: "nsIPrefLocalizedString"; fallback?: string }
+);
+
 /** Metadata collected for a script declaring `@actor`. */
 interface UserChromeActorParameters {
   matches?: string[];
@@ -63,6 +101,8 @@ interface UserChromeScript {
   homepageURL: string;
   downloadURL: string;
   optionsURL: string;
+  options: readonly UserChromeOption[];
+  optionErrors: readonly { line: number; code: string }[];
   startup: string;
   shutdown: string;
   license: string;

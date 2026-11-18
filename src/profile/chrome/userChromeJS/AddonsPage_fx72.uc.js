@@ -70,6 +70,10 @@
     const DETAIL_REFRESH_TIMER_KEY = "__AddonsPageFx72DetailRefreshTimer";
     const DETAIL_REFRESH_TOKEN_KEY = "__AddonsPageFx72DetailRefreshToken";
     const DETAIL_RENDERING_KEY = "__AddonsPageFx72DetailRendering";
+    const SCRIPT_OPTIONS_KEY = "__AddonsPageFx72ScriptOptions";
+    const { mountScriptOptions } = ChromeUtils.importESModule(
+        "chrome://userchromejs/content/utils/UcScriptOptionsUI.sys.mjs"
+    );
     const CATEGORY_OBSERVER_KEY = "__AddonsPageFx72CategoryObserver";
     const CATEGORY_REFRESH_TIMER_KEY = "__AddonsPageFx72CategoryRefreshTimer";
     const CATEGORY_VIEW_LISTENER_KEY = "__AddonsPageFx72CategoryViewListener";
@@ -946,6 +950,7 @@
         },
 
         disconnectDetailObserver (doc) {
+            this.disposeScriptOptions(doc);
             if (!doc) {
                 return;
             }
@@ -984,7 +989,7 @@
                 subtree: true,
                 childList: true,
                 attributes: true,
-                attributeFilter: ["current-view", "loading"],
+                attributeFilter: ["current-view", "loading", "hidden"],
             });
             doc[DETAIL_OBSERVER_KEY] = observer;
             debugLog("ensureDetailObserver(): attached", {
@@ -1046,6 +1051,34 @@
                 addon,
                 section,
             };
+        },
+
+        disposeScriptOptions (doc) {
+            doc?.[SCRIPT_OPTIONS_KEY]?.view?.dispose();
+            if (doc) delete doc[SCRIPT_OPTIONS_KEY];
+        },
+
+        syncScriptOptions (doc, detailState) {
+            const { addon, detail, section } = detailState;
+            if (!addon || addon.type !== "userchromejs" || !section) {
+                this.disposeScriptOptions(doc);
+                return;
+            }
+            addon.resolveBackend?.();
+            const signature = JSON.stringify([
+                addon.scriptOptions, addon.scriptOptionErrors, addon._script?.optionsURL,
+                Services.locale.appLocalesAsBCP47,
+            ]);
+            const current = doc[SCRIPT_OPTIONS_KEY];
+            if (current?.addon === addon && current.section === section && current.signature === signature &&
+                current.view?.panel.isConnected) {
+                const tabGroup = detail.querySelector(".tab-group");
+                if (tabGroup?.hidden) tabGroup.hidden = false;
+                return;
+            }
+            this.disposeScriptOptions(doc);
+            const view = mountScriptOptions({ doc, detail, section, addon, browserWindow: window });
+            if (view) doc[SCRIPT_OPTIONS_KEY] = { addon, section, signature, view };
         },
 
         injectView (doc) {
@@ -1660,6 +1693,7 @@
 
         setUrlOrPath (doc) {
             const detailState = this.getDetailViewState(doc);
+            this.syncScriptOptions(doc, detailState);
             const addon = detailState.addon;
             const section = detailState.section;
             if (!addon || !section) {
@@ -2524,6 +2558,12 @@
         get optionsURL () {
             if (this.isActive && this._script.optionsURL)
                 return this._script.optionsURL;
+        },
+        get scriptOptions () {
+            return this._script.options || [];
+        },
+        get scriptOptionErrors () {
+            return this._script.optionErrors || [];
         },
         resolveBackend () {
             const backend = userChromeJSAddon.resolveBackend(
