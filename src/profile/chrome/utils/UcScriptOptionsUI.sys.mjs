@@ -76,9 +76,14 @@ const OPTIONS_CSS = `
     .ucjs-option-info { min-width: 0; }
     .ucjs-option-label { display: block; margin: 0; font-size: 14px; font-weight: 500; cursor: pointer; }
     .ucjs-option-key {
-        display: block;
-        margin-block-start: 3px;
-        font: 11px/1.5 ui-monospace, monospace;
+        display: inline-block;
+        max-width: 100%;
+        margin-block-start: 5px;
+        padding: 2px 7px;
+        border: 1px solid color-mix(in srgb, var(--ucjs-accent) 28%, var(--ucjs-border));
+        border-radius: 4px;
+        background: color-mix(in srgb, var(--ucjs-accent) 9%, transparent);
+        font: 600 13px/1.4 ui-monospace, monospace;
         color: var(--ucjs-muted);
         overflow-wrap: anywhere;
         user-select: text;
