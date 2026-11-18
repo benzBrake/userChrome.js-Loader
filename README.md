@@ -41,9 +41,10 @@
 
 | 文档 | 说明 |
 | ---- | ---- |
-| [GUIDE.md](./GUIDE.md) | 脚本编写指南（中文） |
-| [GUIDE-en_US.md](./GUIDE-en_US.md) | Script Authoring Guide (English) |
-| [docs/pref-design.md](./docs/pref-design.md) | 脚本选项、pref 声明与文件选择器设计 |
+| [GUIDE.md](./docs/GUIDE.md) | 脚本编写指南（中文） |
+| [GUIDE-en_US.md](./docs/GUIDE-en_US.md) | Script Authoring Guide (English) |
+| [script-options.md](./docs/script-options.md) | 脚本选项与 `@pref` 参考（中文） |
+| [script-options-en_US.md](./docs/script-options-en_US.md) | Script Options and `@pref` Reference (English) |
 
 ### 参与开发
 
@@ -132,8 +133,10 @@ Download files with the `.uc.js` extension and save them to the **chrome** folde
 
 | Document | Description |
 | -------- | ----------- |
-| [GUIDE.md](./GUIDE.md) | 脚本编写指南（中文） |
-| [GUIDE-en_US.md](./GUIDE-en_US.md) | Script Authoring Guide (English) |
+| [GUIDE.md](./docs/GUIDE.md) | Script Authoring Guide (Chinese) |
+| [GUIDE-en_US.md](./docs/GUIDE-en_US.md) | Script Authoring Guide (English) |
+| [script-options.md](./docs/script-options.md) | Script Options and `@pref` Reference (Chinese) |
+| [script-options-en_US.md](./docs/script-options-en_US.md) | Script Options and `@pref` Reference (English) |
 
 ### Development
 

@@ -1,8 +1,8 @@
 # userChromeJS 脚本编写指南
 
-> 本指南面向 `UserChromeJS` 目录下的脚本开发者，帮助快速理解三种脚本类型（`.uc.js`、`.uc.mjs`、`.sys.mjs`）的编写模式、可用的 UC API 和常见实践。
+> 本指南是 `UserChromeJS` 脚本编写的基础指南，帮助开发者理解三种脚本类型（`.uc.js`、`.uc.mjs`、`.sys.mjs`）、可用的 UC API 和常见实践。`@pref` 声明及脚本选项页行为的详细参考见 [`script-options.md`](./script-options.md)。
 
-协作规范、提交前核对清单和资料查询优先级请参阅 [AGENTS.md](./AGENTS.md)。
+协作规范、提交前核对清单和资料查询优先级请参阅 [AGENTS.md](../AGENTS.md)。
 
 ---
 

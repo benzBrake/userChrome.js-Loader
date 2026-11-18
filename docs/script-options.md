@@ -1,4 +1,6 @@
-# 脚本选项与 pref 声明设计
+# 脚本选项与 `@pref` 参考
+
+> 本文是脚本作者的详细参考，补充 [脚本编写指南](./GUIDE.md) 中的基础内容。英文版：[Script Options and `@pref` Reference](./script-options-en_US.md)。
 
 脚本通过头部的 `@pref` 声明需要在 about:addons 中展示的配置。Loader 只收集、校验声明；AddonsPage 的脚本详情页提供“详细信息 / 选项”两个 tab，通过 Firefox 的 preference service 读取和保存值。
 

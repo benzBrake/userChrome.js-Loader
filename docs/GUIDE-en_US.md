@@ -1,10 +1,10 @@
 # UserChromeJS Script Authoring Guide
 
-> This guide is for developers writing scripts in the `UserChromeJS` directory. It helps you quickly understand the three script types (`.uc.js`, `.uc.mjs`, `.sys.mjs`), their authoring patterns, available UC APIs, and common practices.
+> This is the foundational guide to authoring scripts in the `UserChromeJS` directory. It introduces the three script types (`.uc.js`, `.uc.mjs`, `.sys.mjs`), available UC APIs, and common practices. For detailed reference on `@pref` declarations and the script options page, see [`script-options-en_US.md`](./script-options-en_US.md).
 
-For collaboration guidelines, pre-submission checklists, and reference lookup priorities, see [AGENTS.md](./AGENTS.md).
+For collaboration guidelines, pre-submission checklists, and reference lookup priorities, see [AGENTS.md](../AGENTS.md).
 
-中文版请参阅 [GUIDE.md](./GUIDE.md)。
+For the Chinese guide, see [GUIDE.md](./GUIDE.md).
 
 ---
 
