@@ -84,28 +84,6 @@
     const MODERN_CATEGORY_ATTRIBUTE = "data-addons-page-category";
     const MODERN_CATEGORY_VIEW_ATTRIBUTE = "data-addons-page-viewid";
     const L10N_PATCHED_KEY = "__AddonsPageFx72L10nPatched";
-    const TAMPERMONKEY_VIEW_REGISTERED_KEY = "__AddonsPageFx72TampermonkeyViewRegistered";
-    const TAMPERMONKEY_VIEW_RESTORE_KEY = "__AddonsPageFx72TampermonkeyViewRestore";
-    const TAMPERMONKEY_CATEGORY_SYNC_TOKEN_KEY = "__AddonsPageFx72TampermonkeyCategorySyncToken";
-    const TAMPERMONKEY_IDS = [
-        "firefoxbeta@tampermonkey.net",
-        "firefox@tampermonkey.net",
-    ];
-    const TAMPERMONKEY_VIEW_TYPE = "tampermonkey";
-    const TAMPERMONKEY_VIEW_PARAM = "dashboard";
-    const TAMPERMONKEY_VIEW_ID = `addons://${TAMPERMONKEY_VIEW_TYPE}/${TAMPERMONKEY_VIEW_PARAM}`;
-    const TAMPERMONKEY_FALLBACK_VIEW_ID = "addons://list/extension";
-    const TAMPERMONKEY_LAST_CATEGORY_PREF = "extensions.ui.lastCategory";
-    const STYLUS_VIEW_REGISTERED_KEY = "__AddonsPageFx72StylusViewRegistered";
-    const STYLUS_VIEW_RESTORE_KEY = "__AddonsPageFx72StylusViewRestore";
-    const STYLUS_CATEGORY_SYNC_TOKEN_KEY = "__AddonsPageFx72StylusCategorySyncToken";
-    const STYLUS_IDS = [
-        "{7a7a4a92-a2a0-41d1-9fd7-1e92480d612d}",
-    ];
-    const STYLUS_VIEW_TYPE = "stylus";
-    const STYLUS_VIEW_PARAM = "manage";
-    const STYLUS_VIEW_ID = `addons://${STYLUS_VIEW_TYPE}/${STYLUS_VIEW_PARAM}`;
-    const STYLUS_FALLBACK_VIEW_ID = "addons://list/extension";
     const DEBUG_PREF = "userChromeJS.AddonsPage_fx72.debug";
     const DEBUG = (() => {
         try {
@@ -180,8 +158,6 @@
             "homepage": "Homepage",
             "enable": "Enable",
             "unknown": "Unknown",
-            "opening tampermonkey": "Opening the Tampermonkey dashboard in a new tab…",
-            "opening stylus": "Opening the Stylus manager in a new tab…"
         },
         "ja": {
             "set editor path": "about:configでview_source.editor.pathにエディターのパスを設定してください",
@@ -199,8 +175,6 @@
             "homepage": "ホームページ",
             "enable": "有効化",
             "unknown": "不明",
-            "opening tampermonkey": "Tampermonkeyのダッシュボードを新しいタブで開いています…",
-            "opening stylus": "Stylusの管理画面を新しいタブで開いています…"
         },
         'zh-CN': {
             "set editor path": "请打开 about:config 页面并设置 view_source.editor.path 的值为编辑器路径。",
@@ -218,8 +192,6 @@
             "homepage": "主页",
             "enable": "启用",
             "unknown": "未知",
-            "opening tampermonkey": "正在新标签页打开 Tampermonkey 控制台…",
-            "opening stylus": "正在新标签页打开 Stylus 管理页…"
         }
     };
 
@@ -306,8 +278,6 @@
                         this.injectCategory(cDoc);
                         this.ensureDetailObserver(cDoc);
                         this.injectView(cDoc);
-                        this.ensureTampermonkeyRoute(cDoc, "htmlBrowser.ViewChanged");
-                        this.ensureStylusRoute(cDoc, "htmlBrowser.ViewChanged");
                     }
                 };
                 this.addManagedEventListener(doc, doc, "ViewChanged", viewChangedListener);
@@ -321,8 +291,6 @@
                 const loadedEvent = event => {
                     this.injectCategory(doc);
                     this.injectView(doc);
-                    this.ensureTampermonkeyRoute(doc, event.type);
-                    this.ensureStylusRoute(doc, event.type);
                 };
                 this.addManagedEventListener(doc, doc, "ViewChanged", loadedEvent);   // -Fx88
                 this.addManagedEventListener(doc, doc, "view-loaded", loadedEvent);   // Fx89-
@@ -423,11 +391,7 @@
             }
             this.trackAddonsDocument(doc);
             this.replace_l10n_setAttributes(doc);
-            this.ensureTampermonkeyView(doc, reason);
-            this.ensureStylusView(doc, reason);
             this.injectCategory(doc);
-            this.ensureTampermonkeyRoute(doc, reason);
-            this.ensureStylusRoute(doc, reason);
         },
 
         trackAddonsDocument (doc) {
@@ -468,10 +432,6 @@
 
             this.disconnectCategoryObserver(doc);
             this.disconnectDetailObserver(doc);
-            this.restoreCustomView(doc, TAMPERMONKEY_VIEW_TYPE, TAMPERMONKEY_VIEW_RESTORE_KEY,
-                TAMPERMONKEY_VIEW_REGISTERED_KEY);
-            this.restoreCustomView(doc, STYLUS_VIEW_TYPE, STYLUS_VIEW_RESTORE_KEY,
-                STYLUS_VIEW_REGISTERED_KEY);
             const eventCleanups = doc[DOCUMENT_EVENT_CLEANUPS_KEY];
             if (eventCleanups) {
                 eventCleanups.splice(0).forEach(cleanup => {
@@ -491,131 +451,6 @@
             this.addonsDocuments.delete(doc);
         },
 
-        restoreCustomView (doc, viewType, restoreKey, registeredKey) {
-            const win = doc && doc.defaultView;
-            if (!win) {
-                return;
-            }
-
-            const restore = win[restoreKey];
-            if (restore && win.gViewController && win.gViewController.views) {
-                if (restore.hadView) {
-                    win.gViewController.views[viewType] = restore.view;
-                } else {
-                    delete win.gViewController.views[viewType];
-                }
-            }
-            delete win[restoreKey];
-            delete win[registeredKey];
-        },
-
-        async getTampermonkeyAddon () {
-            for (const addonId of TAMPERMONKEY_IDS) {
-                try {
-                    const addon = await AddonManager.getAddonByID(addonId);
-                    if (addon && addon.isActive) {
-                        return addon;
-                    }
-                } catch (e) {
-                    debugWarn("getTampermonkeyAddon(): lookup failed", addonId, e);
-                }
-            }
-            return null;
-        },
-
-        async getStylusAddon () {
-            for (const addonId of STYLUS_IDS) {
-                try {
-                    const addon = await AddonManager.getAddonByID(addonId);
-                    if (addon && addon.isActive) {
-                        return addon;
-                    }
-                } catch (e) {
-                    debugWarn("getStylusAddon(): lookup failed", addonId, e);
-                }
-            }
-            return null;
-        },
-
-        getWebExtensionUUID (addonId) {
-            if (!addonId) {
-                return null;
-            }
-            try {
-                const raw = Services.prefs.getStringPref("extensions.webextensions.uuids", "");
-                if (!raw) {
-                    return null;
-                }
-                const uuids = JSON.parse(raw);
-                return typeof uuids[addonId] === "string" ? uuids[addonId] : null;
-            } catch (e) {
-                debugWarn("getTampermonkeyUUID(): failed", addonId, e);
-                return null;
-            }
-        },
-
-        getTampermonkeyDashboardURL (addon) {
-            if (!addon || !addon.id) {
-                return null;
-            }
-
-            const candidates = [];
-            if (addon.optionsURL) {
-                candidates.push(addon.optionsURL);
-            }
-            const uuid = this.getWebExtensionUUID(addon.id);
-            if (uuid) {
-                candidates.push(`moz-extension://${uuid}/options.html`);
-            }
-
-            for (const candidate of candidates) {
-                try {
-                    return new URL("options.html#nav=dashboard", candidate).href;
-                } catch (e) {
-                    debugWarn("getTampermonkeyDashboardURL(): invalid candidate", {
-                        id: addon.id,
-                        candidate,
-                    });
-                }
-            }
-            return null;
-        },
-
-        getStylusManageURL (addon) {
-            if (!addon || !addon.id) {
-                return null;
-            }
-
-            const candidates = [];
-            if (addon.optionsURL) {
-                candidates.push(addon.optionsURL);
-            }
-            const uuid = this.getWebExtensionUUID(addon.id);
-            if (uuid) {
-                candidates.push(`moz-extension://${uuid}/manage.html`);
-            }
-
-            for (const candidate of candidates) {
-                try {
-                    return new URL("manage.html", candidate).href;
-                } catch (e) {
-                    debugWarn("getStylusManageURL(): invalid candidate", {
-                        id: addon.id,
-                        candidate,
-                    });
-                }
-            }
-            return null;
-        },
-
-        async shouldShowTampermonkeyCategory () {
-            return !!(await this.getTampermonkeyAddon());
-        },
-
-        async shouldShowStylusCategory () {
-            return !!(await this.getStylusAddon());
-        },
-
         loadAddonsView (doc, viewId, replace = false) {
             const win = doc && doc.defaultView;
             if (!win) {
@@ -630,260 +465,6 @@
             return null;
         },
 
-        openTampermonkeyDashboardTab (url) {
-            if (!url) {
-                return;
-            }
-            try {
-                if (typeof window.openTrustedLinkIn === "function") {
-                    window.openTrustedLinkIn(url, "tab");
-                    return;
-                }
-            } catch (e) {
-                debugWarn("openTampermonkeyDashboardTab(): openTrustedLinkIn failed", e);
-            }
-            this.openUrl(url);
-        },
-
-        openStylusManageTab (url) {
-            if (!url) {
-                return;
-            }
-            try {
-                if (typeof window.openTrustedLinkIn === "function") {
-                    window.openTrustedLinkIn(url, "tab");
-                    return;
-                }
-            } catch (e) {
-                debugWarn("openStylusManageTab(): openTrustedLinkIn failed", e);
-            }
-            this.openUrl(url);
-        },
-
-        createTampermonkeyView (doc, addon, dashboardURL) {
-            const fragment = doc.createDocumentFragment();
-            const container = $C(doc, "section", {
-                class: "tampermonkey-dashboard-view",
-            }, fragment);
-            const header = $C(doc, "div", {
-                class: "tampermonkey-dashboard-header",
-            }, container);
-
-            $C(doc, "h1", {
-                class: "tampermonkey-dashboard-title",
-                "#text": "Tampermonkey"
-            }, header);
-            $C(doc, "p", {
-                class: "tampermonkey-dashboard-subtitle",
-                "#text": addon && addon.name ? addon.name : "Tampermonkey"
-            }, header);
-            $C(doc, "p", {
-                class: "tampermonkey-dashboard-message",
-                "#text": $L("opening tampermonkey")
-            }, container);
-            const link = $C(doc, "a", {
-                class: "tampermonkey-dashboard-link",
-                href: dashboardURL,
-                action: "AM-open-url",
-                "#text": dashboardURL
-            }, container);
-            link.addEventListener("click", this);
-
-            return fragment;
-        },
-
-        createStylusView (doc, addon, manageURL) {
-            const fragment = doc.createDocumentFragment();
-            const container = $C(doc, "section", {
-                class: "tampermonkey-dashboard-view",
-            }, fragment);
-            const header = $C(doc, "div", {
-                class: "tampermonkey-dashboard-header",
-            }, container);
-
-            $C(doc, "h1", {
-                class: "tampermonkey-dashboard-title",
-                "#text": "Stylus"
-            }, header);
-            $C(doc, "p", {
-                class: "tampermonkey-dashboard-subtitle",
-                "#text": addon && addon.name ? addon.name : "Stylus"
-            }, header);
-            $C(doc, "p", {
-                class: "tampermonkey-dashboard-message",
-                "#text": $L("opening stylus")
-            }, container);
-            const link = $C(doc, "a", {
-                class: "tampermonkey-dashboard-link",
-                href: manageURL,
-                action: "AM-open-url",
-                "#text": manageURL
-            }, container);
-            link.addEventListener("click", this);
-
-            return fragment;
-        },
-
-        ensureTampermonkeyView (doc, reason = "unknown", attempt = 0) {
-            const win = doc && doc.defaultView;
-            if (!win) {
-                return;
-            }
-            if (!win.gViewController || typeof win.gViewController.defineView !== "function") {
-                if (attempt < 10) {
-                    win.setTimeout(() => {
-                        this.ensureTampermonkeyView(doc, reason, attempt + 1);
-                    }, attempt < 3 ? 60 : 120);
-                }
-                return;
-            }
-
-            const renderView = async (param) => {
-                const addon = await this.getTampermonkeyAddon();
-                const dashboardURL = addon && this.getTampermonkeyDashboardURL(addon);
-                if (param !== TAMPERMONKEY_VIEW_PARAM || !addon || !dashboardURL) {
-                    this.ensureTampermonkeyRoute(doc, "render");
-                    return doc.createDocumentFragment();
-                }
-                this.openTampermonkeyDashboardTab(dashboardURL);
-                this.ensureTampermonkeyRoute(doc, "render.open", true);
-                return this.createTampermonkeyView(doc, addon, dashboardURL);
-            };
-
-            if (!win[TAMPERMONKEY_VIEW_RESTORE_KEY]) {
-                const hadRegisteredView = !!win[TAMPERMONKEY_VIEW_REGISTERED_KEY];
-                win[TAMPERMONKEY_VIEW_RESTORE_KEY] = {
-                    hadView: !hadRegisteredView && !!(win.gViewController.views &&
-                        Object.prototype.hasOwnProperty.call(win.gViewController.views, TAMPERMONKEY_VIEW_TYPE)),
-                    view: hadRegisteredView ? undefined :
-                        win.gViewController.views && win.gViewController.views[TAMPERMONKEY_VIEW_TYPE],
-                };
-            }
-
-            if (win.gViewController.views && win.gViewController.views[TAMPERMONKEY_VIEW_TYPE]) {
-                win.gViewController.views[TAMPERMONKEY_VIEW_TYPE] = renderView;
-                win[TAMPERMONKEY_VIEW_REGISTERED_KEY] = true;
-                return;
-            }
-
-            if (win[TAMPERMONKEY_VIEW_REGISTERED_KEY]) {
-                return;
-            }
-
-            win.gViewController.defineView(TAMPERMONKEY_VIEW_TYPE, renderView);
-            win[TAMPERMONKEY_VIEW_REGISTERED_KEY] = true;
-            debugLog("ensureTampermonkeyView(): registered", {
-                reason,
-                href: String(doc.URL || ""),
-            });
-        },
-
-        ensureStylusView (doc, reason = "unknown", attempt = 0) {
-            const win = doc && doc.defaultView;
-            if (!win) {
-                return;
-            }
-            if (!win.gViewController || typeof win.gViewController.defineView !== "function") {
-                if (attempt < 10) {
-                    win.setTimeout(() => {
-                        this.ensureStylusView(doc, reason, attempt + 1);
-                    }, attempt < 3 ? 60 : 120);
-                }
-                return;
-            }
-
-            const renderView = async (param) => {
-                const addon = await this.getStylusAddon();
-                const manageURL = addon && this.getStylusManageURL(addon);
-                if (param !== STYLUS_VIEW_PARAM || !addon || !manageURL) {
-                    this.ensureStylusRoute(doc, "render");
-                    return doc.createDocumentFragment();
-                }
-                this.openStylusManageTab(manageURL);
-                this.ensureStylusRoute(doc, "render.open", true);
-                return this.createStylusView(doc, addon, manageURL);
-            };
-
-            if (!win[STYLUS_VIEW_RESTORE_KEY]) {
-                const hadRegisteredView = !!win[STYLUS_VIEW_REGISTERED_KEY];
-                win[STYLUS_VIEW_RESTORE_KEY] = {
-                    hadView: !hadRegisteredView && !!(win.gViewController.views &&
-                        Object.prototype.hasOwnProperty.call(win.gViewController.views, STYLUS_VIEW_TYPE)),
-                    view: hadRegisteredView ? undefined :
-                        win.gViewController.views && win.gViewController.views[STYLUS_VIEW_TYPE],
-                };
-            }
-
-            if (win.gViewController.views && win.gViewController.views[STYLUS_VIEW_TYPE]) {
-                win.gViewController.views[STYLUS_VIEW_TYPE] = renderView;
-                win[STYLUS_VIEW_REGISTERED_KEY] = true;
-                return;
-            }
-
-            if (win[STYLUS_VIEW_REGISTERED_KEY]) {
-                return;
-            }
-
-            win.gViewController.defineView(STYLUS_VIEW_TYPE, renderView);
-            win[STYLUS_VIEW_REGISTERED_KEY] = true;
-            debugLog("ensureStylusView(): registered", {
-                reason,
-                href: String(doc.URL || ""),
-            });
-        },
-
-        async syncTampermonkeyCategory (doc, reason = "unknown") {
-            const button = this.getCategoryButton(doc, "tampermonkey");
-            if (!button) {
-                return;
-            }
-
-            const token = `${Date.now()}:${Math.random()}`;
-            button[TAMPERMONKEY_CATEGORY_SYNC_TOKEN_KEY] = token;
-            const visible = await this.shouldShowTampermonkeyCategory();
-            if (button[TAMPERMONKEY_CATEGORY_SYNC_TOKEN_KEY] !== token) {
-                return;
-            }
-
-            button.hidden = !visible;
-            if (visible) {
-                if (!button.hasAttribute(MODERN_CATEGORY_ATTRIBUTE)) {
-                    button.removeAttribute("disabled");
-                }
-            } else {
-                if (!button.hasAttribute(MODERN_CATEGORY_ATTRIBUTE)) {
-                    button.setAttribute("disabled", "true");
-                }
-                this.ensureTampermonkeyRoute(doc, `${reason}.hidden`);
-            }
-        },
-
-        async syncStylusCategory (doc, reason = "unknown") {
-            const button = this.getCategoryButton(doc, "stylus");
-            if (!button) {
-                return;
-            }
-
-            const token = `${Date.now()}:${Math.random()}`;
-            button[STYLUS_CATEGORY_SYNC_TOKEN_KEY] = token;
-            const visible = await this.shouldShowStylusCategory();
-            if (button[STYLUS_CATEGORY_SYNC_TOKEN_KEY] !== token) {
-                return;
-            }
-
-            button.hidden = !visible;
-            if (visible) {
-                if (!button.hasAttribute(MODERN_CATEGORY_ATTRIBUTE)) {
-                    button.removeAttribute("disabled");
-                }
-            } else {
-                if (!button.hasAttribute(MODERN_CATEGORY_ATTRIBUTE)) {
-                    button.setAttribute("disabled", "true");
-                }
-                this.ensureStylusRoute(doc, `${reason}.hidden`);
-            }
-        },
-
         getCategoryButton (doc, name) {
             if (!doc || !name) {
                 return null;
@@ -891,98 +472,6 @@
             return doc.querySelector(
                 `.category[name="${name}"], [${MODERN_CATEGORY_ATTRIBUTE}="${name}"]`
             );
-        },
-
-        async ensureTampermonkeyRoute (doc, reason = "unknown", force = false) {
-            const win = doc && doc.defaultView;
-            if (!win) {
-                return;
-            }
-
-            const visible = await this.shouldShowTampermonkeyCategory();
-            if (visible && !force) {
-                return;
-            }
-
-            try {
-                if (Services.prefs.getStringPref(TAMPERMONKEY_LAST_CATEGORY_PREF, "") === TAMPERMONKEY_VIEW_ID) {
-                    Services.prefs.setStringPref(TAMPERMONKEY_LAST_CATEGORY_PREF, TAMPERMONKEY_FALLBACK_VIEW_ID);
-                }
-            } catch (e) {
-                debugWarn("ensureTampermonkeyRoute(): pref fallback failed", e);
-            }
-
-            try {
-                const historyState = win.history && win.history.state;
-                if (historyState && historyState.view === TAMPERMONKEY_VIEW_ID) {
-                    win.history.replaceState({
-                        ...historyState,
-                        view: TAMPERMONKEY_FALLBACK_VIEW_ID,
-                        previousView: historyState.previousView === TAMPERMONKEY_VIEW_ID ? null : historyState.previousView,
-                    }, "");
-                }
-            } catch (e) {
-                debugWarn("ensureTampermonkeyRoute(): history fallback failed", e);
-            }
-
-            if (win.gViewController && win.gViewController.currentViewId === TAMPERMONKEY_VIEW_ID) {
-                try {
-                    win.setTimeout(() => {
-                        const result = this.loadAddonsView(doc, TAMPERMONKEY_FALLBACK_VIEW_ID, true);
-                        if (result && typeof result.catch === "function") {
-                            result.catch(ex => console.error(ex));
-                        }
-                    }, 0);
-                } catch (e) {
-                    console.error(e);
-                }
-            }
-        },
-
-        async ensureStylusRoute (doc, reason = "unknown", force = false) {
-            const win = doc && doc.defaultView;
-            if (!win) {
-                return;
-            }
-
-            const visible = await this.shouldShowStylusCategory();
-            if (visible && !force) {
-                return;
-            }
-
-            try {
-                if (Services.prefs.getStringPref(TAMPERMONKEY_LAST_CATEGORY_PREF, "") === STYLUS_VIEW_ID) {
-                    Services.prefs.setStringPref(TAMPERMONKEY_LAST_CATEGORY_PREF, STYLUS_FALLBACK_VIEW_ID);
-                }
-            } catch (e) {
-                debugWarn("ensureStylusRoute(): pref fallback failed", e);
-            }
-
-            try {
-                const historyState = win.history && win.history.state;
-                if (historyState && historyState.view === STYLUS_VIEW_ID) {
-                    win.history.replaceState({
-                        ...historyState,
-                        view: STYLUS_FALLBACK_VIEW_ID,
-                        previousView: historyState.previousView === STYLUS_VIEW_ID ? null : historyState.previousView,
-                    }, "");
-                }
-            } catch (e) {
-                debugWarn("ensureStylusRoute(): history fallback failed", e);
-            }
-
-            if (win.gViewController && win.gViewController.currentViewId === STYLUS_VIEW_ID) {
-                try {
-                    win.setTimeout(() => {
-                        const result = this.loadAddonsView(doc, STYLUS_FALLBACK_VIEW_ID, true);
-                        if (result && typeof result.catch === "function") {
-                            result.catch(ex => console.error(ex));
-                        }
-                    }, 0);
-                } catch (e) {
-                    console.error(e);
-                }
-            }
         },
 
         disconnectDetailObserver (doc) {
@@ -1246,8 +735,6 @@
             this.ensureCategoryViewListener(doc);
             this.injectModernCategory(doc, pageNav);
             this.syncModernCategorySelection(doc);
-            this.syncTampermonkeyCategory(doc, "injectCategory.modern");
-            this.syncStylusCategory(doc, "injectCategory.modern");
         },
 
         injectLegacyCategory (doc, cat, extensionBtn) {
@@ -1271,48 +758,6 @@
                 (localeBtn ? localeBtn.parentElement : cat).insertBefore(ucjsBtn, localeBtn || null);
             }
 
-            if (!doc.querySelector('.category[name="tampermonkey"]')) {
-                const tmBtn = extensionBtn.cloneNode(false);
-                tmBtn.removeAttribute("aria-selected");
-                tmBtn.removeAttribute("tabindex");
-                tmBtn.removeAttribute("data-l10n-id");
-                tmBtn.setAttribute("viewid", TAMPERMONKEY_VIEW_ID);
-                tmBtn.setAttribute("name", "tampermonkey");
-                tmBtn.setAttribute("title", "Tampermonkey");
-                tmBtn.hidden = true;
-
-                $C(doc, "span", {
-                    class: "category-name",
-                    "#text": "Tampermonkey"
-                }, tmBtn);
-
-                const ucjsBtn = cat.querySelector('.category[name="userchromejs"]');
-                const localeBtn = cat.querySelector('.category[name="locale"]');
-                const referenceNode = (ucjsBtn && ucjsBtn.nextSibling) || localeBtn || null;
-                cat.insertBefore(tmBtn, referenceNode);
-            }
-            if (!doc.querySelector('.category[name="stylus"]')) {
-                const stylusBtn = extensionBtn.cloneNode(false);
-                stylusBtn.removeAttribute("aria-selected");
-                stylusBtn.removeAttribute("tabindex");
-                stylusBtn.removeAttribute("data-l10n-id");
-                stylusBtn.setAttribute("viewid", STYLUS_VIEW_ID);
-                stylusBtn.setAttribute("name", "stylus");
-                stylusBtn.setAttribute("title", "Stylus");
-                stylusBtn.hidden = true;
-
-                $C(doc, "span", {
-                    class: "category-name",
-                    "#text": "Stylus"
-                }, stylusBtn);
-
-                const tmBtn = cat.querySelector('.category[name="tampermonkey"]');
-                const localeBtn = cat.querySelector('.category[name="locale"]');
-                const referenceNode = (tmBtn && tmBtn.nextSibling) || localeBtn || null;
-                cat.insertBefore(stylusBtn, referenceNode);
-            }
-            this.syncTampermonkeyCategory(doc, "injectCategory");
-            this.syncStylusCategory(doc, "injectCategory");
         },
 
         injectModernCategory (doc, pageNav) {
@@ -1322,18 +767,6 @@
                     viewId: "addons://list/userchromejs",
                     title: "userChrome JS",
                     hidden: false,
-                },
-                {
-                    name: "tampermonkey",
-                    viewId: TAMPERMONKEY_VIEW_ID,
-                    title: "Tampermonkey",
-                    hidden: true,
-                },
-                {
-                    name: "stylus",
-                    viewId: STYLUS_VIEW_ID,
-                    title: "Stylus",
-                    hidden: true,
                 },
             ];
 
@@ -2458,21 +1891,9 @@
                     #category-userchromejs > .category-icon {
                         list-style-image: url(chrome://mozapps/skin/extensions/experimentGeneric.svg);
                     }
-                    #category-tampermonkey > .category-icon {
-                        list-style-image: url(chrome://mozapps/skin/extensions/extensionGeneric.svg);
-                    }
-                    #category-stylus > .category-icon {
-                        list-style-image: url(chrome://mozapps/skin/extensions/extensionGeneric.svg);
-                    }
                 }
                 @-moz-document url("about:addons"), url("chrome://mozapps/content/extensions/aboutaddons.html") {
                     html|*.category[name="userchromejs"] {
-                        background-image: url(chrome://mozapps/skin/extensions/category-extensions.svg);
-                    }
-                    html|*.category[name="tampermonkey"] {
-                        background-image: url(chrome://mozapps/skin/extensions/category-extensions.svg);
-                    }
-                    html|*.category[name="stylus"] {
                         background-image: url(chrome://mozapps/skin/extensions/category-extensions.svg);
                     }
                     html|*#details-deck html|*:is(
@@ -2514,32 +1935,6 @@
                     }
                     html|*#details-deck html|*.userchromejs-detail-value > html|*:is(html|a, html|span) {
                         display: block;
-                    }
-                    html|*.tampermonkey-dashboard-view {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 16px;
-                        min-height: calc(100vh - 190px);
-                    }
-                    html|*.tampermonkey-dashboard-header {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 4px;
-                    }
-                    html|*.tampermonkey-dashboard-title {
-                        margin: 0;
-                    }
-                    html|*.tampermonkey-dashboard-subtitle {
-                        margin: 0;
-                        color: var(--in-content-deemphasized-text);
-                    }
-                    html|*.tampermonkey-dashboard-message {
-                        margin: 0;
-                    }
-                    html|*.tampermonkey-dashboard-link {
-                        display: block;
-                        overflow-wrap: anywhere;
-                        word-break: break-word;
                     }
                 }`;
 
