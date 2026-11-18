@@ -1,38 +1,45 @@
 import { createOptionsStore, localize, parseInput } from './UcScriptOptions.sys.mjs';
 
 const MESSAGES = {
-    options: ['Options', '选项'],
-    empty: ['This script provides no options.', '此脚本未提供选项。'],
-    browse: ['Browse…', '浏览…'], reset: ['Remove the custom value and restore the default or script preset', '移除自定义配置，恢复 Firefox 默认或脚本预设'],
-    unset: ['Not configured', '尚未配置'], modified: ['Customized', '已自定义'],
-    default: ['Using Firefox default', '使用 Firefox 默认'], saved: ['Saved', '已保存'],
-    fallback: ['Using script preset', '使用脚本预设'],
-    resetDefault: ['Firefox default', 'Firefox 默认'], resetFallback: ['Script preset', '脚本预设'],
-    on: ['On', '开启'], off: ['Off', '关闭'], emptyString: ['Empty text', '空文本'],
-    external: ['Changed elsewhere; save your input or press Esc to reload.', '配置已在其他位置修改；保存当前输入或按 Esc 重新读取。'],
-    independent: ['Open separate settings page', '打开独立设置页'],
-    hint: ['Changes are saved automatically. When they take effect depends on the script.', '修改后自动保存，生效时间取决于脚本的实现。'],
-    'invalid-json': ['Invalid JSON declaration', 'JSON 声明无效'],
-    'invalid-key': ['Invalid preference key', 'pref key 无效'],
-    'invalid-type': ['Unsupported option type', '选项类型不受支持'],
-    'invalid-text': ['Invalid label or translation', '文案或翻译格式无效'],
-    'invalid-choices': ['Invalid enum choices', '枚举候选值无效'],
-    'duplicate-key': ['Duplicate preference key', '重复的 pref key'],
-    'invalid-range': ['Invalid number range', '数字范围无效'],
-    'invalid-interface': ['Unsupported complex interface', 'complex 接口不受支持'],
-    'invalid-path-schema': ['Invalid path declaration', '路径声明无效'],
-    'invalid-control': ['Invalid control declaration', '控件声明无效'],
-    'invalid-picker': ['Invalid file picker declaration', '文件选择器声明无效'],
-    'type-conflict': ['The stored preference type does not match the declaration. Reset it before editing.', '现有 pref 类型与声明不符，请重置后编辑。'],
-    'invalid-number': ['Enter a 32-bit integer within the declared range.', '请输入声明范围内的 32 位整数。'],
-    'unknown-choice': ['The current value is not in the choices. Select a new value to change it.', '当前值不在候选列表中，可选择新值进行修改。'],
-    locked: ['Locked by Firefox or policy', '已被 Firefox 或策略锁定'],
-    'missing-base': ['The path base directory is unavailable.', '路径基准目录不可用。'],
-    'invalid-path': ['Enter a valid path. Relative paths cannot contain parent traversal.', '请输入有效路径，相对路径不能包含上级目录跳转。'],
-    'outside-base': ['Choose a file inside the declared base directory.', '请选择声明的基准目录内的文件。'],
-    'read-failed': ['Unable to read this preference. You can reset or replace it.', '无法读取此项配置，可以重置或填写新值。'],
-    'write-failed': ['Unable to save this preference.', '无法保存此项配置。'],
-    'picker-failed': ['Unable to open the file picker.', '无法打开文件选择器。'],
+    options: { default: 'Options', zh: '选项', ja: '設定' },
+    empty: { default: 'This script provides no options.', zh: '此脚本未提供选项。', ja: 'このスクリプトには設定項目がありません。' },
+    browse: { default: 'Browse…', zh: '浏览…', ja: '参照…' },
+    reset: { default: 'Remove the custom value and restore the default or script preset', zh: '移除自定义配置，恢复 Firefox 默认或脚本预设', ja: 'カスタム値を削除し、Firefoxの既定値またはスクリプトの初期値に戻す' },
+    unset: { default: 'Not configured', zh: '尚未配置', ja: '未設定' },
+    modified: { default: 'Customized', zh: '已自定义', ja: '変更済み' },
+    default: { default: 'Using Firefox default', zh: '使用 Firefox 默认', ja: 'Firefoxの既定値を使用' },
+    saved: { default: 'Saved', zh: '已保存', ja: '保存しました' },
+    fallback: { default: 'Using script preset', zh: '使用脚本预设', ja: 'スクリプトの初期値を使用' },
+    resetDefault: { default: 'Firefox default', zh: 'Firefox 默认', ja: 'Firefoxの既定値' },
+    resetFallback: { default: 'Script preset', zh: '脚本预设', ja: 'スクリプトの初期値' },
+    on: { default: 'On', zh: '开启', ja: 'オン' },
+    off: { default: 'Off', zh: '关闭', ja: 'オフ' },
+    emptyString: { default: 'Empty text', zh: '空文本', ja: '空のテキスト' },
+    separator: { default: ': ', zh: '：', ja: '：' },
+    external: { default: 'Changed elsewhere; save your input or press Esc to reload.', zh: '配置已在其他位置修改；保存当前输入或按 Esc 重新读取。', ja: '別の場所で設定が変更されました。入力を保存するか、Escキーで再読み込みしてください。' },
+    independent: { default: 'Open separate settings page', zh: '打开独立设置页', ja: '専用の設定ページを開く' },
+    hint: { default: 'Changes are saved automatically. When they take effect depends on the script.', zh: '修改后自动保存，生效时间取决于脚本的实现。', ja: '変更は自動的に保存されます。反映されるタイミングはスクリプトによって異なります。' },
+    'invalid-json': { default: 'Invalid JSON declaration', zh: 'JSON 声明无效', ja: 'JSON宣言が無効です' },
+    'invalid-key': { default: 'Invalid preference key', zh: 'pref key 无效', ja: '設定キーが無効です' },
+    'invalid-type': { default: 'Unsupported option type', zh: '选项类型不受支持', ja: '未対応の設定型です' },
+    'invalid-text': { default: 'Invalid label or translation', zh: '文案或翻译格式无效', ja: 'ラベルまたは翻訳が無効です' },
+    'invalid-choices': { default: 'Invalid enum choices', zh: '枚举候选值无效', ja: '列挙型の選択肢が無効です' },
+    'duplicate-key': { default: 'Duplicate preference key', zh: '重复的 pref key', ja: '設定キーが重複しています' },
+    'invalid-range': { default: 'Invalid number range', zh: '数字范围无效', ja: '数値の範囲が無効です' },
+    'invalid-interface': { default: 'Unsupported complex interface', zh: 'complex 接口不受支持', ja: '未対応の複合型インターフェースです' },
+    'invalid-path-schema': { default: 'Invalid path declaration', zh: '路径声明无效', ja: 'パス宣言が無効です' },
+    'invalid-control': { default: 'Invalid control declaration', zh: '控件声明无效', ja: 'コントロール宣言が無効です' },
+    'invalid-picker': { default: 'Invalid file picker declaration', zh: '文件选择器声明无效', ja: 'ファイル選択ダイアログの宣言が無効です' },
+    'type-conflict': { default: 'The stored preference type does not match the declaration. Reset it before editing.', zh: '现有 pref 类型与声明不符，请重置后编辑。', ja: '保存された設定の型が宣言と一致しません。リセットしてから編集してください。' },
+    'invalid-number': { default: 'Enter a 32-bit integer within the declared range.', zh: '请输入声明范围内的 32 位整数。', ja: '宣言された範囲内の32ビット整数を入力してください。' },
+    'unknown-choice': { default: 'The current value is not in the choices. Select a new value to change it.', zh: '当前值不在候选列表中，可选择新值进行修改。', ja: '現在の値は選択肢にありません。変更するには新しい値を選択してください。' },
+    locked: { default: 'Locked by Firefox or policy', zh: '已被 Firefox 或策略锁定', ja: 'Firefoxまたはポリシーによってロックされています' },
+    'missing-base': { default: 'The path base directory is unavailable.', zh: '路径基准目录不可用。', ja: 'パスの基準ディレクトリを利用できません。' },
+    'invalid-path': { default: 'Enter a valid path. Relative paths cannot contain parent traversal.', zh: '请输入有效路径，相对路径不能包含上级目录跳转。', ja: '有効なパスを入力してください。相対パスに上位ディレクトリへの移動は含められません。' },
+    'outside-base': { default: 'Choose a file inside the declared base directory.', zh: '请选择声明的基准目录内的文件。', ja: '宣言された基準ディレクトリ内のファイルを選択してください。' },
+    'read-failed': { default: 'Unable to read this preference. You can reset or replace it.', zh: '无法读取此项配置，可以重置或填写新值。', ja: 'この設定を読み取れません。リセットするか、新しい値を入力してください。' },
+    'write-failed': { default: 'Unable to save this preference.', zh: '无法保存此项配置。', ja: 'この設定を保存できません。' },
+    'picker-failed': { default: 'Unable to open the file picker.', zh: '无法打开文件选择器。', ja: 'ファイル選択ダイアログを開けません。' },
 };
 
 // Keep these HTML styles with the component: the legacy AddonsPage sheet defaults to XUL.
@@ -155,8 +162,11 @@ const OPTIONS_CSS = `
 `;
 
 function translator(locales) {
-    const chinese = locales.some(locale => locale.toLowerCase().startsWith('zh'));
-    return key => MESSAGES[key]?.[chinese ? 1 : 0] || key;
+    // Use the same ordered locale matching as script-provided labels and descriptions.
+    return key => {
+        const message = MESSAGES[key];
+        return message ? localize({ en: message.default, ...message }, locales) : key;
+    };
 }
 
 function element(doc, tag, attributes = {}, parent) {
@@ -319,13 +329,13 @@ export function mountScriptOptions({ doc, detail, section, addon, browserWindow,
             const defaultValue = state.defaultValue ?? option.fallback;
             const defaultLabel = state.defaultValue !== undefined ? t('resetDefault') : t('resetFallback');
             const stateText = state.hasUserValue ? t('modified') : state.value !== undefined ?
-                `${t('default')}：${displayValue(state.value)}` : option.fallback !== undefined ?
-                    `${t('fallback')}：${displayValue(option.fallback)}` : t('unset');
+                `${t('default')}${t('separator')}${displayValue(state.value)}` : option.fallback !== undefined ?
+                    `${t('fallback')}${t('separator')}${displayValue(option.fallback)}` : t('unset');
             status.textContent = state.locked ? t('locked') : state.error ? t(state.error) :
                 message ? `${message} · ${stateText}` : stateText;
             if (state.error) status.classList.add('ucjs-option-error');
             if (state.hasUserValue && defaultValue !== undefined && !state.error) {
-                status.textContent += ` · ${defaultLabel}：${displayValue(defaultValue)}`;
+                status.textContent += ` · ${defaultLabel}${t('separator')}${displayValue(defaultValue)}`;
             }
         };
         rows.set(option.key, refresh);

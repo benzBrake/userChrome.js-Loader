@@ -169,21 +169,57 @@
             "edit": "Edit",
             "browse directory": "Browse Directory",
             "open url": "Open Install URL",
-            "copy name": "Copy Name"
+            "copy name": "Copy Name",
+            "install page": "Installation Page",
+            "path": "Path",
+            "author": "Author",
+            "note": "Notes",
+            "review page": "Review Page",
+            "download url": "Download URL",
+            "options url": "Options URL",
+            "homepage": "Homepage",
+            "enable": "Enable",
+            "unknown": "Unknown",
+            "opening tampermonkey": "Opening the Tampermonkey dashboard in a new tab…",
+            "opening stylus": "Opening the Stylus manager in a new tab…"
         },
         "ja": {
             "set editor path": "about:configでview_source.editor.pathにエディターのパスを設定してください",
             "edit": "編集",
             "browse directory": "ディレクトリを開く",
             "open url": "インストール元URLを開く",
-            "copy name": "名前をコピー"
+            "copy name": "名前をコピー",
+            "install page": "インストール元ページ",
+            "path": "パス",
+            "author": "作者",
+            "note": "備考",
+            "review page": "レビューページ",
+            "download url": "ダウンロードURL",
+            "options url": "設定ページURL",
+            "homepage": "ホームページ",
+            "enable": "有効化",
+            "unknown": "不明",
+            "opening tampermonkey": "Tampermonkeyのダッシュボードを新しいタブで開いています…",
+            "opening stylus": "Stylusの管理画面を新しいタブで開いています…"
         },
         'zh-CN': {
             "set editor path": "请打开 about:config 页面并设置 view_source.editor.path 的值为编辑器路径。",
             "edit": "编辑",
             "browse directory": "浏览路径",
             "open url": "打开安装网址",
-            "copy name": "复制名称"
+            "copy name": "复制名称",
+            "install page": "安装页面",
+            "path": "路径",
+            "author": "作者",
+            "note": "备注",
+            "review page": "评论页面",
+            "download url": "下载链接",
+            "options url": "设置页面地址",
+            "homepage": "主页",
+            "enable": "启用",
+            "unknown": "未知",
+            "opening tampermonkey": "正在新标签页打开 Tampermonkey 控制台…",
+            "opening stylus": "正在新标签页打开 Stylus 管理页…"
         }
     };
 
@@ -643,7 +679,7 @@
             }, header);
             $C(doc, "p", {
                 class: "tampermonkey-dashboard-message",
-                "#text": "正在新标签页打开 Tampermonkey 控制台..."
+                "#text": $L("opening tampermonkey")
             }, container);
             const link = $C(doc, "a", {
                 class: "tampermonkey-dashboard-link",
@@ -675,7 +711,7 @@
             }, header);
             $C(doc, "p", {
                 class: "tampermonkey-dashboard-message",
-                "#text": "正在新标签页打开 Stylus 管理页..."
+                "#text": $L("opening stylus")
             }, container);
             const link = $C(doc, "a", {
                 class: "tampermonkey-dashboard-link",
@@ -1067,7 +1103,7 @@
             addon.resolveBackend?.();
             const signature = JSON.stringify([
                 addon.scriptOptions, addon.scriptOptionErrors, addon._script?.optionsURL,
-                Services.locale.appLocalesAsBCP47,
+                getLocales(),
             ]);
             const current = doc[SCRIPT_OPTIONS_KEY];
             if (current?.addon === addon && current.section === section && current.signature === signature &&
@@ -1077,7 +1113,8 @@
                 return;
             }
             this.disposeScriptOptions(doc);
-            const view = mountScriptOptions({ doc, detail, section, addon, browserWindow: window });
+            const view = mountScriptOptions({ doc, detail, section, addon, browserWindow: window,
+                locales: getLocales() });
             if (view) doc[SCRIPT_OPTIONS_KEY] = { addon, section, signature, view };
         },
 
@@ -1095,7 +1132,7 @@
                         action: "AM-switch",
                         class: "toggle-button extension-enable-button",
                         "data-l10n-id": "extension-enable-addon-button-label",
-                        "aria-label": "Enable",
+                        "aria-label": $L("enable"),
                     });
                     input.checked = !addon.userDisabled;
                     input.addEventListener("click", this, true);
@@ -1108,7 +1145,7 @@
                     const { version, updateDate } = addon;
                     const info = $C(doc, "span", {
                         style : "font-size: smaller; font-style: italic; margin-inline-end: 8px",
-                        "#text": `${version} (${updateDate ? updateDate.toLocaleDateString() : "unknown"})`
+                        "#text": `${version} (${updateDate ? updateDate.toLocaleDateString() : $L("unknown")})`
                     });
                     addonName.after(info);
                 }
@@ -1598,22 +1635,22 @@
                 case "extension":
                 case "theme":
                 case "greasemonkey-user-script":
-                    pushRow("install-page", "安装页面", installURL, true);
+                    pushRow("install-page", $L("install page"), installURL, true);
                     break;
                 case "plugin":
-                    pushRow("path", "路径", pluginPath, true);
+                    pushRow("path", $L("path"), pluginPath, true);
                     break;
                 case "userchromejs":
-                    pushRow("path", "路径", pluginPath, true);
-                    pushRow("author", "作者", aAddon.author);
-                    pushRow("note", "备注", this.getNoteValue(aAddon));
-                    pushRow("review", "评论页面", aAddon.reviewURL, true);
-                    pushRow("download", "下载链接", aAddon.downloadURL || aAddon.updateURL, true);
-                    pushRow("options", "Options URL", this.getOptionsURL(aAddon), true);
+                    pushRow("path", $L("path"), pluginPath, true);
+                    pushRow("author", $L("author"), aAddon.author);
+                    pushRow("note", $L("note"), this.getNoteValue(aAddon));
+                    pushRow("review", $L("review page"), aAddon.reviewURL, true);
+                    pushRow("download", $L("download url"), aAddon.downloadURL || aAddon.updateURL, true);
+                    pushRow("options", $L("options url"), this.getOptionsURL(aAddon), true);
                     break;
                 default:
-                    pushRow("homepage", "Homepage", aAddon.homepageURL, true);
-                    pushRow("path", "Path", pluginPath, true);
+                    pushRow("homepage", $L("homepage"), aAddon.homepageURL, true);
+                    pushRow("path", $L("path"), pluginPath, true);
                     break;
             }
 
@@ -2784,11 +2821,11 @@
     }
 
     function $L () {
-        const _LOCALE = getLocale() || "zh-CN";
+        const _LOCALE = getLocale();
         let str = arguments[0];
         if (str) {
             if (!arguments.length) return "";
-            str = LANG[_LOCALE][str] || str;
+            str = LANG[_LOCALE][str] ?? LANG["en-US"][str] ?? str;
             for (let i = 1; i < arguments.length; i++) {
                 str = str.replace("%s", arguments[i]);
             }
@@ -2796,18 +2833,18 @@
         } else return "";
     }
 
+    function getLocales () {
+        return [Services.prefs.getCharPref("general.useragent.locale", ""),
+            ...Services.locale.appLocalesAsBCP47].filter(Boolean);
+    }
+
     function getLocale () {
-        let LOCALE = Services.prefs.getCharPref("general.useragent.locale", "");
-        if (!LOCALE) {
-            let sLocales = Services.locale.appLocalesAsBCP47;
-            for (let key in sLocales) {
-                if (LANG.hasOwnProperty(sLocales[key])) {
-                    LOCALE = sLocales[key];
-                    break;
-                }
-            }
+        const languages = { en: "en-US", ja: "ja", zh: "zh-CN" };
+        for (const locale of getLocales()) {
+            const match = languages[locale.toLowerCase().split("-")[0]];
+            if (match) return match;
         }
-        return LOCALE;
+        return "en-US";
     }
 
     window[UNLOAD_HANDLER_KEY] = function () {
